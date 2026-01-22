@@ -49,10 +49,8 @@ go install github.com/josephschmitt/pj@latest
 
 ```bash
 # First, install gah: https://github.com/get-gah/gah
-gah install pj
+gah install josephschmitt/pj
 ```
-
-Note: After the first release, a PR will be submitted to add `pj` to the gah database. Until then, use `gah install josephschmitt/pj`.
 
 ### Scoop (Windows)
 
