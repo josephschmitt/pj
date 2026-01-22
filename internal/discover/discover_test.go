@@ -721,3 +721,66 @@ func TestDiscoverIgnoreWithExcludes(t *testing.T) {
 		}
 	}
 }
+
+func TestDiscoverIDEMarkers(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create projects with IDE markers only (directories)
+	createProject(t, tmpDir, "vscode-project", ".vscode/")
+	createProject(t, tmpDir, "idea-project", ".idea/")
+	createProject(t, tmpDir, "fleet-project", ".fleet/")
+	createProject(t, tmpDir, "zed-project", ".zed/")
+	// Eclipse uses a file marker
+	createProject(t, tmpDir, "eclipse-project", ".project")
+
+	// Create project with IDE marker AND language marker (language should win)
+	createProject(t, tmpDir, "mixed-project", ".vscode/", "go.mod")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".vscode", ".idea", ".fleet", ".project", ".zed", "go.mod"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 6 {
+		t.Fatalf("Discover() found %d projects, want 6", len(projects))
+	}
+
+	// Verify IDE-only projects use their IDE marker
+	for _, p := range projects {
+		switch filepath.Base(p.Path) {
+		case "vscode-project":
+			if p.Marker != ".vscode" {
+				t.Errorf("vscode-project marker = %q, want .vscode", p.Marker)
+			}
+		case "idea-project":
+			if p.Marker != ".idea" {
+				t.Errorf("idea-project marker = %q, want .idea", p.Marker)
+			}
+		case "fleet-project":
+			if p.Marker != ".fleet" {
+				t.Errorf("fleet-project marker = %q, want .fleet", p.Marker)
+			}
+		case "eclipse-project":
+			if p.Marker != ".project" {
+				t.Errorf("eclipse-project marker = %q, want .project", p.Marker)
+			}
+		case "zed-project":
+			if p.Marker != ".zed" {
+				t.Errorf("zed-project marker = %q, want .zed", p.Marker)
+			}
+		case "mixed-project":
+			// go.mod (priority 10) should win over .vscode (priority 1)
+			if p.Marker != "go.mod" {
+				t.Errorf("mixed-project marker = %q, want go.mod (higher priority)", p.Marker)
+			}
+		}
+	}
+}

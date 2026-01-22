@@ -43,6 +43,11 @@ func TestDefaults(t *testing.T) {
 		"pyproject.toml",
 		"Makefile",
 		"flake.nix",
+		".vscode",
+		".idea",
+		".fleet",
+		".project",
+		".zed",
 	}
 	if len(cfg.Markers) != len(expectedMarkers) {
 		t.Errorf("Markers length = %d, want %d", len(cfg.Markers), len(expectedMarkers))
