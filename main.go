@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -30,6 +32,38 @@ type CLI struct {
 	Version    bool     `short:"V" help:"Show version"`
 }
 
+func stdinIsPiped() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) == 0
+}
+
+func readPathsFromStdin(verbose bool) []string {
+	var paths []string
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		path := strings.TrimSpace(scanner.Text())
+		if path == "" {
+			continue
+		}
+		if strings.HasPrefix(path, "~") {
+			if home, err := os.UserHomeDir(); err == nil {
+				path = filepath.Join(home, path[1:])
+			}
+		}
+		if _, err := os.Stat(path); err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "warning: skipping invalid path: %s\n", path)
+			}
+			continue
+		}
+		paths = append(paths, path)
+	}
+	return paths
+}
+
 func main() {
 	var cli CLI
 	ctx := kong.Parse(&cli,
@@ -52,6 +86,15 @@ func main() {
 	if err := cfg.MergeFlags(&cli); err != nil {
 		fmt.Fprintf(os.Stderr, "Error merging config: %v\n", err)
 		os.Exit(1)
+	}
+
+	stdinMode := false
+	if stdinIsPiped() {
+		stdinPaths := readPathsFromStdin(cli.Verbose)
+		if len(stdinPaths) > 0 {
+			cfg.SearchPaths = stdinPaths
+			stdinMode = true
+		}
 	}
 
 	if cli.Verbose {
@@ -83,7 +126,7 @@ func main() {
 
 	var projects []discover.Project
 
-	if !cli.NoCache {
+	if !cli.NoCache && !stdinMode {
 		cached, err := cacheManager.Get()
 		if err == nil && cached != nil {
 			if cli.Verbose {
@@ -107,8 +150,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Discovered %d projects\n", len(projects))
 		}
 
-		if err := cacheManager.Set(projects); err != nil && cli.Verbose {
-			fmt.Fprintf(os.Stderr, "Warning: failed to cache results: %v\n", err)
+		if !stdinMode {
+			if err := cacheManager.Set(projects); err != nil && cli.Verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to cache results: %v\n", err)
+			}
 		}
 	}
 

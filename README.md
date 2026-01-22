@@ -12,6 +12,7 @@
 - **Smart Caching**: Caches results for instant subsequent searches (5-minute TTL)
 - **Flexible Markers**: Detects projects by `.git`, `go.mod`, `package.json`, `Cargo.toml`, and more
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
+- **Unix Pipeline Support**: Pipe paths in and results out - works seamlessly in command chains
 - **Configurable**: YAML configuration file with sensible defaults
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 - **Fuzzy Finder Integration**: Perfect for fuzzy finding and quick navigation with `fzf`, `television`, or your favorite fuzzy finder
@@ -191,6 +192,75 @@ pj --icons --icon-map "go.mod:🐹"
 # Verbose output for debugging
 pj -v
 ```
+
+### Unix Pipeline Support
+
+`pj` follows the Unix philosophy and can be used as both a filter and a data source in pipelines. When paths are piped into `pj` via stdin, it automatically detects this and searches only those paths (bypassing cache for dynamic results).
+
+#### Piping Into pj
+
+Filter a list of directories to find projects within them:
+
+```bash
+# Find projects in specific directories
+ls -d ~/work/*/ | pj --icons
+
+# Use with find to search specific locations
+find ~/code -maxdepth 1 -type d | pj
+
+# Combine multiple directory sources
+echo -e "~/personal\n~/work\n~/experiments" | pj --icons
+
+# Filter projects from a specific subdirectory pattern
+ls -d ~/repos/*/src | pj
+```
+
+#### Piping Out of pj
+
+Use `pj` output as input for other Unix tools:
+
+```bash
+# Count total projects in a directory tree
+ls -d ~/development/*/ | pj | wc -l
+
+# Search project paths by name
+pj | grep -i "react"
+
+# Filter projects by path location
+pj | grep "/work/"
+
+# Create a backup script for all projects
+pj | xargs -I {} tar -czf {}.tar.gz {}
+
+# Check git status for all projects
+pj | xargs -I {} sh -c 'echo "=== {} ===" && git -C {} status -s'
+
+# Find projects modified in the last 7 days
+pj | xargs -I {} find {} -maxdepth 1 -mtime -7 -type f
+
+# Open a random project (requires function wrapper, not direct cd)
+cd "$(pj | shuf -n 1)"
+```
+
+#### Combining Both
+
+Chain `pj` with other tools for powerful workflows:
+
+```bash
+# Count projects in specific directories
+ls -d ~/code/*/ | pj | wc -l
+
+# Get total size of all your projects
+pj | xargs du -sh
+
+# Find all projects that have uncommitted changes
+pj | xargs -I {} sh -c 'git -C {} diff --quiet || echo {}'
+
+# List projects sorted by last modification time
+pj | xargs ls -dt
+```
+
+**Note:** When using stdin, `pj` automatically skips the cache since piped input is dynamic. Invalid paths are silently ignored (use `-v` to see warnings).
 
 ## Configuration
 

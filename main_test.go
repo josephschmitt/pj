@@ -105,6 +105,28 @@ func (env *testEnv) runPJ(args ...string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
+// runPJWithStdin runs the pj binary with stdin input in the test environment
+func (env *testEnv) runPJWithStdin(stdin string, args ...string) (string, string, error) {
+	env.t.Helper()
+	cmd := exec.Command(binaryPath, args...)
+
+	cmd.Env = append(os.Environ(),
+		"XDG_CONFIG_HOME="+env.configDir,
+		"XDG_CACHE_HOME="+env.cacheDir,
+	)
+
+	// Set up stdin
+	cmd.Stdin = strings.NewReader(stdin)
+
+	// Capture stdout and stderr
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	return stdout.String(), stderr.String(), err
+}
+
 // Helper to run the pj binary with arguments (for simple tests)
 func runPJ(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()
@@ -391,5 +413,176 @@ func TestCLI_PrioritySorting(t *testing.T) {
 	}
 	if !strings.Contains(lines[1], "low-priority") {
 		t.Errorf("Second line should be low-priority project, got: %s", lines[1])
+	}
+}
+
+func TestCLI_StdinBasic(t *testing.T) {
+	tmpDir := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir, "stdin-project", ".git/")
+
+	stdin := tmpDir + "\n"
+	stdout, stderr, err := env.runPJWithStdin(stdin, "--no-cache")
+	if err != nil {
+		t.Fatalf("pj with stdin failed: %v\nStderr: %s", err, stderr)
+	}
+
+	if !strings.Contains(stdout, "stdin-project") {
+		t.Errorf("Output should contain stdin-project, got: %s", stdout)
+	}
+}
+
+func TestCLI_StdinMultiplePaths(t *testing.T) {
+	tmpDir1 := t.TempDir()
+	tmpDir2 := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir1, "project-a", "go.mod")
+	createTestProject(t, tmpDir2, "project-b", "package.json")
+
+	stdin := tmpDir1 + "\n" + tmpDir2 + "\n"
+	stdout, stderr, err := env.runPJWithStdin(stdin, "--no-cache")
+	if err != nil {
+		t.Fatalf("pj with stdin failed: %v\nStderr: %s", err, stderr)
+	}
+
+	if !strings.Contains(stdout, "project-a") {
+		t.Error("Output should contain project-a")
+	}
+	if !strings.Contains(stdout, "project-b") {
+		t.Error("Output should contain project-b")
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 projects, got %d", len(lines))
+	}
+}
+
+func TestCLI_StdinWithIcons(t *testing.T) {
+	tmpDir := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdin := tmpDir + "\n"
+	stdout, stderr, err := env.runPJWithStdin(stdin, "--no-cache", "--icons")
+	if err != nil {
+		t.Fatalf("pj with stdin and icons failed: %v\nStderr: %s", err, stderr)
+	}
+
+	if !strings.Contains(stdout, "go-project") {
+		t.Error("Output should contain go-project")
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines[0]) <= len(tmpDir)+len("/go-project") {
+		t.Error("Output with --icons should include icon character")
+	}
+}
+
+func TestCLI_StdinInvalidPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir, "valid-project", ".git/")
+
+	stdin := tmpDir + "\n/nonexistent/path\n"
+	stdout, stderr, err := env.runPJWithStdin(stdin, "--no-cache", "-v")
+	if err != nil {
+		t.Fatalf("pj with stdin failed: %v\nStderr: %s", err, stderr)
+	}
+
+	if !strings.Contains(stdout, "valid-project") {
+		t.Error("Output should contain valid-project")
+	}
+
+	if !strings.Contains(stderr, "warning: skipping invalid path") {
+		t.Error("Stderr should contain warning about invalid path")
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Errorf("Expected 1 project (invalid path should be skipped), got %d", len(lines))
+	}
+}
+
+func TestCLI_StdinInvalidPathsSilent(t *testing.T) {
+	tmpDir := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir, "valid-project", ".git/")
+
+	stdin := tmpDir + "\n/nonexistent/path\n"
+	stdout, stderr, err := env.runPJWithStdin(stdin, "--no-cache")
+	if err != nil {
+		t.Fatalf("pj with stdin failed: %v\nStderr: %s", err, stderr)
+	}
+
+	if !strings.Contains(stdout, "valid-project") {
+		t.Error("Output should contain valid-project")
+	}
+
+	if strings.Contains(stderr, "warning") {
+		t.Error("Stderr should not contain warnings without -v flag")
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Errorf("Expected 1 project (invalid path should be silently skipped), got %d", len(lines))
+	}
+}
+
+func TestCLI_StdinSkipsCache(t *testing.T) {
+	tmpDir := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir, "project", ".git/")
+
+	stdin := tmpDir + "\n"
+	stdout1, stderr1, err := env.runPJWithStdin(stdin, "-v")
+	if err != nil {
+		t.Fatalf("First stdin run failed: %v\nStderr: %s", err, stderr1)
+	}
+
+	if !strings.Contains(stdout1, "project") {
+		t.Error("First run should find project")
+	}
+
+	if strings.Contains(stderr1, "Using cached results") {
+		t.Error("stdin mode should not use cache on first run")
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	stdout2, stderr2, err := env.runPJWithStdin(stdin, "-v")
+	if err != nil {
+		t.Fatalf("Second stdin run failed: %v\nStderr: %s", err, stderr2)
+	}
+
+	if !strings.Contains(stdout2, "project") {
+		t.Error("Second run should find project")
+	}
+
+	if strings.Contains(stderr2, "Using cached results") {
+		t.Error("stdin mode should never use cache, even on subsequent runs")
+	}
+}
+
+func TestCLI_StdinEmptyInput(t *testing.T) {
+	tmpDir := t.TempDir()
+	env := setupTestEnv(t)
+
+	createTestProject(t, tmpDir, "project", ".git/")
+
+	stdin := "\n\n\n"
+	stdout, stderr, err := env.runPJWithStdin(stdin, "-p", tmpDir, "--no-cache")
+	if err != nil {
+		t.Fatalf("pj with empty stdin failed: %v\nStderr: %s", err, stderr)
+	}
+
+	if !strings.Contains(stdout, "project") {
+		t.Error("Empty stdin should fall back to normal behavior with -p flag")
 	}
 }
