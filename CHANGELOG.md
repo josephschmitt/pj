@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/josephschmitt/pj/compare/v1.0.2...v1.1.0) (2026-01-22)
+
+
+### Features
+
+* add icons for all default project markers ([7eb6eec](https://github.com/josephschmitt/pj/commit/7eb6eec2106fa2f605305c67b376397ea5ee4ac7))
+* add support for .gitignore and .ignore files  ([#7](https://github.com/josephschmitt/pj/issues/7)) ([40ce418](https://github.com/josephschmitt/pj/commit/40ce4184c8087e38da69414a82197882ea7ef453))
+
+
+### Bug Fixes
+
+* add vendorHash to fix Nix builds ([dfd1cc7](https://github.com/josephschmitt/pj/commit/dfd1cc7593daecf8a4a2786a15d4442c15850426))
+* use highest priority marker when multiple markers exist ([cfbf76d](https://github.com/josephschmitt/pj/commit/cfbf76d0102043bd57b6dd2a63b48b087fce342c))
+
 ## [1.0.2](https://github.com/josephschmitt/pj/compare/v1.0.1...v1.0.2) (2026-01-22)
 
 
