@@ -135,7 +135,9 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 			}
 		}
 
-		// Check for project markers
+		// Check for project markers - find the highest priority marker
+		var bestMarker string
+		var bestPriority int
 		for _, marker := range d.config.Markers {
 			markerPath := filepath.Join(path, marker)
 			if _, err := os.Stat(markerPath); err == nil {
@@ -144,15 +146,23 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 					priority = 1 // Default priority for unmarked markers
 				}
 
-				results <- Project{
-					Path:     path,
-					Marker:   marker,
-					Priority: priority,
+				if priority > bestPriority {
+					bestMarker = marker
+					bestPriority = priority
 				}
-
-				// Found a project, skip its subdirectories
-				return fs.SkipDir
 			}
+		}
+
+		// If we found any marker, emit the project with the best one
+		if bestMarker != "" {
+			results <- Project{
+				Path:     path,
+				Marker:   bestMarker,
+				Priority: bestPriority,
+			}
+
+			// Found a project, skip its subdirectories
+			return fs.SkipDir
 		}
 
 		return nil
