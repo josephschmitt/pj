@@ -1,0 +1,129 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: pj
+    main: .
+    binary: pj
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+
+archives:
+  - id: pj
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - '^build\(deps\):'
+      - 'README'
+      - Merge pull request
+      - Merge branch
+
+brews:
+  - name: pj
+    repository:
+      owner: josephschmitt
+      name: tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/josephschmitt/pj
+    description: "Fast project finder CLI that searches your filesystem for git repositories and project directories"
+    license: MIT
+    test: |
+      system "#{bin}/pj", "--version"
+    install: |
+      bin.install "pj"
+
+scoops:
+  - name: pj
+    repository:
+      owner: josephschmitt
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_BUCKET_GITHUB_TOKEN }}"
+    homepage: https://github.com/josephschmitt/pj
+    description: "Fast project finder CLI that searches your filesystem for git repositories and project directories"
+    license: MIT
+
+nfpms:
+  - id: pj
+    package_name: pj
+    file_name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    vendor: Joseph Schmitt
+    homepage: https://github.com/josephschmitt/pj
+    maintainer: Joseph Schmitt <joseph@josephschmitt.com>
+    description: Fast project finder CLI that searches your filesystem for git repositories and project directories
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+      - archlinux
+    bindir: /usr/bin
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/pj/LICENSE
+      - src: README.md
+        dst: /usr/share/doc/pj/README.md
+
+# Uncomment when AUR account is set up
+# aurs:
+#   - name: pj-bin
+#     homepage: https://github.com/josephschmitt/pj
+#     description: Fast project finder CLI that searches your filesystem for git repositories and project directories
+#     maintainers:
+#       - 'Joseph Schmitt <joseph at josephschmitt dot com>'
+#     license: MIT
+#     private_key: '{{ .Env.AUR_KEY }}'
+#     git_url: 'ssh://aur@aur.archlinux.org/pj-bin.git'
+#     package: |-
+#       install -Dm755 "./pj" "${pkgdir}/usr/bin/pj"
+#       install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/pj/LICENSE"
+#       install -Dm644 "./README.md" "${pkgdir}/usr/share/doc/pj/README.md"
+
+release:
+  github:
+    owner: josephschmitt
+    name: pj
+  draft: false
+  prerelease: auto
+  name_template: "{{.ProjectName}} v{{.Version}}"
