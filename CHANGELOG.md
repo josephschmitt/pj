@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/josephschmitt/pj/compare/v1.1.0...v1.2.0) (2026-01-22)
+
+
+### Features
+
+* add stdin support for Unix pipeline integration ([8a5434d](https://github.com/josephschmitt/pj/commit/8a5434d0626e018835a2cd3095069b1a41e4a0f5))
+
 ## [1.1.0](https://github.com/josephschmitt/pj/compare/v1.0.2...v1.1.0) (2026-01-22)
 
 
