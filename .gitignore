@@ -6,6 +6,9 @@
 *.dylib
 pj
 
+# GoReleaser output
+dist/
+
 # Test binary, built with `go test -c`
 *.test
 
