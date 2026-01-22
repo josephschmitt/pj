@@ -124,6 +124,11 @@ func defaults() *Config {
 			"pyproject.toml",
 			"Makefile",
 			"flake.nix",
+			".vscode",
+			".idea",
+			".fleet",
+			".project",
+			".zed",
 		},
 		MaxDepth: 3,
 		Excludes: []string{
@@ -144,6 +149,9 @@ func defaults() *Config {
 			"pyproject.toml": "",
 			"Makefile":       "",
 			"flake.nix":      "",
+			".vscode":        "󰨞",
+			".idea":          "",
+			".project":       "",
 		},
 	}
 }

@@ -45,6 +45,11 @@ var markerSpecificity = map[string]int{
 	"pom.xml":        10,
 	"build.gradle":   10,
 	"CMakeLists.txt": 10,
+	".vscode":        5,
+	".idea":          5,
+	".fleet":         5,
+	".project":       5,
+	".zed":           5,
 }
 
 // Discover finds all project directories
