@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/josephschmitt/pj/compare/v1.0.1...v1.0.2) (2026-01-22)
+
+
+### Bug Fixes
+
+* update homebrew tap repository name to homebrew-tap ([1705f62](https://github.com/josephschmitt/pj/commit/1705f623d922f679426376171c80693d44bf2891))
+
 ## [1.0.1](https://github.com/josephschmitt/pj/compare/v1.0.0...v1.0.1) (2026-01-22)
 
 
