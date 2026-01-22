@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/josephschmitt/pj/compare/v1.0.0...v1.0.1) (2026-01-22)
+
+
+### Bug Fixes
+
+* use dedicated PAT for release-please to trigger release workflow ([62bd3d4](https://github.com/josephschmitt/pj/commit/62bd3d48a4aa7ec23041ed6ecaf338145d1add45))
+
 ## 1.0.0 (2026-01-22)
 
 
