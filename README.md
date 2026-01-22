@@ -3,7 +3,7 @@
 
   # pj - Project Finder CLI
 
-  Fast project directory finder that searches your filesystem for git repositories and project directories. Built for speed and seamless integration with fuzzy finders like `fzf`.
+  Fast project directory finder that searches your filesystem for git repositories and project directories. Built for speed and seamless integration with fuzzy finders like [fzf](https://github.com/junegunn/fzf) and [television](https://github.com/alexpasmantier/television).
 </div>
 
 ## Features
@@ -14,7 +14,7 @@
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
 - **Configurable**: YAML configuration file with sensible defaults
 - **Cross-Platform**: Works on macOS, Linux, and Windows
-- **fzf Integration**: Perfect for fuzzy finding and quick navigation
+- **Fuzzy Finder Integration**: Perfect for fuzzy finding and quick navigation with `fzf`, `television`, or your favorite fuzzy finder
 
 ## Installation
 
@@ -259,13 +259,15 @@ CLI flags override config file settings, which override defaults.
 pj -d 5
 ```
 
-## Integration with fzf
+## Integration with Fuzzy Finders
 
-The real power of `pj` comes from integrating it with fuzzy finders like `fzf` for quick project navigation.
+The real power of `pj` comes from integrating it with fuzzy finders like `fzf` or `television` for quick project navigation.
 
 ### Shell Function (Bash/Zsh)
 
 Add to your `~/.bashrc` or `~/.zshrc`:
+
+#### Using fzf
 
 ```bash
 # Quick project navigation with fzf
@@ -286,13 +288,45 @@ pjf() {
 }
 ```
 
+#### Using television
+
+```bash
+# Quick project navigation with television
+pjt() {
+  local project
+  project=$(pj --icons | tv) &&
+  cd "$(echo "$project" | awk '{print $2}')"
+}
+```
+
+Or without icons:
+
+```bash
+pjt() {
+  local project
+  project=$(pj | tv) &&
+  cd "$project"
+}
+```
+
 ### Fish Shell
 
 Add to your `~/.config/fish/config.fish`:
 
+#### Using fzf
+
 ```fish
 function pjf
     set -l project (pj --icons | fzf --ansi --preview 'ls -la (echo {} | awk \'{print $2}\')' --preview-window right:60%)
+    and cd (echo $project | awk '{print $2}')
+end
+```
+
+#### Using television
+
+```fish
+function pjt
+    set -l project (pj --icons | tv)
     and cd (echo $project | awk '{print $2}')
 end
 ```
@@ -426,6 +460,7 @@ Joseph Schmitt ([@josephschmitt](https://github.com/josephschmitt))
 ## Related Projects
 
 - [fzf](https://github.com/junegunn/fzf) - Command-line fuzzy finder
+- [television](https://github.com/alexpasmantier/television) - Blazingly fast fuzzy finder TUI
 - [gah](https://github.com/get-gah/gah) - GitHub Asset Helper for installing binaries
 - [z](https://github.com/rupa/z) - Jump around directories
 - [autojump](https://github.com/wting/autojump) - Fast way to navigate filesystem
