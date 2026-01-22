@@ -55,7 +55,7 @@ brews:
   - name: pj
     repository:
       owner: josephschmitt
-      name: tap
+      name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: https://github.com/josephschmitt/pj
