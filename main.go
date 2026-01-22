@@ -20,6 +20,7 @@ type CLI struct {
 	Marker     []string `short:"m" help:"Add project marker (repeatable)"`
 	Exclude    []string `short:"e" help:"Exclude pattern (repeatable)"`
 	MaxDepth   int      `short:"d" help:"Maximum search depth"`
+	NoIgnore   bool     `help:"Don't respect .gitignore and .ignore files"`
 	Icons      bool     `help:"Show marker-based icons"`
 	Strip      bool     `help:"Strip icons from output"`
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`

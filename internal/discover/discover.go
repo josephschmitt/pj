@@ -112,6 +112,13 @@ func (d *Discoverer) Discover() ([]Project, error) {
 func (d *Discoverer) walkPath(root string, results chan<- Project) {
 	baseDepth := strings.Count(root, string(os.PathSeparator))
 
+	// Initialize ignore stack
+	ignoreFileNames := []string{".gitignore", ".ignore"}
+	ignoreStack := NewIgnoreStack(!d.config.NoIgnore, ignoreFileNames)
+
+	// Track previous depth for detecting ascent
+	previousDepth := -1
+
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // Skip paths we can't access
@@ -121,8 +128,28 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 			return nil
 		}
 
-		// Check max depth
+		// Calculate current depth
 		currentDepth := strings.Count(path, string(os.PathSeparator)) - baseDepth
+
+		// Handle directory ascent - pop ignore stack entries
+		if previousDepth >= 0 && currentDepth <= previousDepth {
+			ignoreStack.Leave(currentDepth)
+		}
+		previousDepth = currentDepth
+
+		// Check if this path should be ignored (based on parent's rules)
+		if ignoreStack.ShouldIgnore(path, true) {
+			return fs.SkipDir
+		}
+
+		// Enter directory - check for ignore files
+		if err := ignoreStack.Enter(path, currentDepth); err != nil {
+			if d.verbose {
+				fmt.Fprintf(os.Stderr, "Error loading ignore files in %s: %v\n", path, err)
+			}
+		}
+
+		// Check max depth
 		if currentDepth > d.config.MaxDepth {
 			return fs.SkipDir
 		}
