@@ -93,6 +93,20 @@ docs: documentation   # No version bump
 
 **Do not manually create tags.** The release-please workflow handles version management.
 
+### Commit Guidelines
+
+**Keep commits focused and atomic:**
+- Each commit should address a single concern or change
+- Never mix unrelated changes (e.g., bug fixes + new features) in one commit
+- If making multiple changes, create separate commits for each logical change
+- Examples:
+  - ✅ Separate commit for Nix build fix, separate commit for adding icons
+  - ✅ Separate commit for refactoring, separate commit for adding tests
+  - ❌ Single commit that fixes a bug AND adds a new feature
+  - ❌ Single commit that updates documentation AND changes code behavior
+
+This makes the git history clear, simplifies code review, and allows release-please to properly categorize changes in the changelog.
+
 ## Distribution
 
 GoReleaser configuration (`.goreleaser.yaml`) handles multi-platform builds with:
