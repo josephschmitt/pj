@@ -51,7 +51,7 @@ changelog:
       - Merge pull request
       - Merge branch
 
-homebrew:
+brews:
   - name: pj
     repository:
       owner: josephschmitt
