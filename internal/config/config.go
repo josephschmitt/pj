@@ -141,13 +141,13 @@ func defaults() *Config {
 		},
 		CacheTTL: 300, // 5 minutes
 		Icons: map[string]string{
-			".git":           "",
+			".git":           "",
 			"go.mod":         "󰟓",
 			"package.json":   "󰎙",
-			"Cargo.toml":     "",
-			"pyproject.toml": "",
-			"Makefile":       "",
-			"flake.nix":      "",
+			"Cargo.toml":     "",
+			"pyproject.toml": "",
+			"Makefile":       "",
+			"flake.nix":      "",
 		},
 	}
 }
