@@ -124,6 +124,9 @@ func (m *Manager) computeConfigHash() string {
 	// Hash max depth
 	h.Write([]byte(fmt.Sprintf("%d", m.config.MaxDepth)))
 
+	// Hash NoIgnore setting
+	h.Write([]byte(fmt.Sprintf("%t", m.config.NoIgnore)))
+
 	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }
 

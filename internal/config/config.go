@@ -15,6 +15,7 @@ type Config struct {
 	MaxDepth    int               `yaml:"max_depth"`
 	Excludes    []string          `yaml:"excludes"`
 	CacheTTL    int               `yaml:"cache_ttl"` // seconds
+	NoIgnore    bool              `yaml:"no_ignore"` // Don't respect .gitignore and .ignore files
 	Icons       map[string]string `yaml:"icons"`
 }
 
@@ -105,6 +106,11 @@ func (c *Config) MergeFlags(cli interface{}) error {
 		if maxDepth := int(maxDepthField.Int()); maxDepth > 0 {
 			c.MaxDepth = maxDepth
 		}
+	}
+
+	// Get NoIgnore field
+	if noIgnoreField := v.FieldByName("NoIgnore"); noIgnoreField.IsValid() && noIgnoreField.Kind() == reflect.Bool {
+		c.NoIgnore = noIgnoreField.Bool()
 	}
 
 	return nil

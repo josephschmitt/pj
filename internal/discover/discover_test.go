@@ -370,3 +370,354 @@ func TestDiscoverMultipleMarkers(t *testing.T) {
 		t.Errorf("Project priority = %d, want 10", projects[0].Priority)
 	}
 }
+
+func TestDiscoverWithGitignore(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create project structure:
+	// tmpDir/
+	//   .gitignore (contains "ignored-project")
+	//   project1/.git/
+	//   ignored-project/.git/  <- should be ignored
+	//   project2/.git/
+
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "ignored-project", ".git/")
+	createProject(t, tmpDir, "project2", ".git/")
+
+	// Create .gitignore
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("ignored-project\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoIgnore:    false, // Respect ignore files
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find only project1 and project2
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	// Verify ignored-project is not in results
+	for _, p := range projects {
+		if filepath.Base(p.Path) == "ignored-project" {
+			t.Error("Found ignored-project in results (should be ignored by .gitignore)")
+		}
+	}
+}
+
+func TestDiscoverWithGitignoreDirectorySlash(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "ignored-dir", ".git/")
+
+	// Create .gitignore with trailing slash
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("ignored-dir/\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoIgnore:    false,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find only project1
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1", len(projects))
+	}
+
+	// Verify ignored-dir is not in results
+	for _, p := range projects {
+		if filepath.Base(p.Path) == "ignored-dir" {
+			t.Error("Found ignored-dir in results (should be ignored by .gitignore pattern with /)")
+		}
+	}
+}
+
+func TestDiscoverWithGitignoreWildcard(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "temp-foo", ".git/")
+	createProject(t, tmpDir, "temp-bar", ".git/")
+
+	// Create .gitignore with wildcard
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("temp-*\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoIgnore:    false,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find only project1
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	// Verify temp-* projects are not in results
+	for _, p := range projects {
+		basename := filepath.Base(p.Path)
+		if strings.HasPrefix(basename, "temp-") {
+			t.Errorf("Found %s in results (should be ignored by wildcard pattern)", basename)
+		}
+	}
+}
+
+func TestDiscoverWithIgnoreFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "ignored-by-ignore", ".git/")
+
+	// Create .ignore file (not .gitignore)
+	ignorePath := filepath.Join(tmpDir, ".ignore")
+	if err := os.WriteFile(ignorePath, []byte("ignored-by-ignore\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoIgnore:    false,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find only project1
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1", len(projects))
+	}
+
+	// Verify ignored-by-ignore is not in results
+	for _, p := range projects {
+		if filepath.Base(p.Path) == "ignored-by-ignore" {
+			t.Error("Found ignored-by-ignore in results (should be ignored by .ignore file)")
+		}
+	}
+}
+
+func TestDiscoverWithNoIgnoreFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "ignored-project", ".git/")
+
+	// Create .gitignore
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("ignored-project\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoIgnore:    true, // Disable ignore file processing
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find both projects when NoIgnore is true
+	if len(projects) != 2 {
+		t.Errorf("Discover() with NoIgnore=true found %d projects, want 2", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	// Verify both projects are found
+	found := make(map[string]bool)
+	for _, p := range projects {
+		found[filepath.Base(p.Path)] = true
+	}
+
+	if !found["project1"] {
+		t.Error("project1 not found")
+	}
+	if !found["ignored-project"] {
+		t.Error("ignored-project not found (should be found when NoIgnore=true)")
+	}
+}
+
+func TestDiscoverHierarchicalIgnore(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create directory structure:
+	// tmpDir/
+	//   .gitignore (contains "root-ignored")
+	//   project1/.git/
+	//   root-ignored/.git/     <- ignored by root .gitignore
+	//   subdir/
+	//     .gitignore (contains "sub-ignored")
+	//     project2/.git/
+	//     sub-ignored/.git/    <- ignored by subdir .gitignore
+	//     normal/.git/
+
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "root-ignored", ".git/")
+
+	subDir := filepath.Join(tmpDir, "subdir")
+	if err := os.MkdirAll(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	createProject(t, subDir, "project2", ".git/")
+	createProject(t, subDir, "sub-ignored", ".git/")
+	createProject(t, subDir, "normal", ".git/")
+
+	// Create root .gitignore
+	rootGitignore := filepath.Join(tmpDir, ".gitignore")
+	if err := os.WriteFile(rootGitignore, []byte("root-ignored\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create subdir .gitignore
+	subGitignore := filepath.Join(subDir, ".gitignore")
+	if err := os.WriteFile(subGitignore, []byte("sub-ignored\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoIgnore:    false,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find project1, project2, and normal (3 total)
+	if len(projects) != 3 {
+		t.Errorf("Discover() found %d projects, want 3", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	// Verify expected projects are found and ignored ones are not
+	found := make(map[string]bool)
+	for _, p := range projects {
+		found[filepath.Base(p.Path)] = true
+	}
+
+	if !found["project1"] {
+		t.Error("project1 not found")
+	}
+	if !found["project2"] {
+		t.Error("project2 not found")
+	}
+	if !found["normal"] {
+		t.Error("normal not found")
+	}
+	if found["root-ignored"] {
+		t.Error("root-ignored found (should be ignored by root .gitignore)")
+	}
+	if found["sub-ignored"] {
+		t.Error("sub-ignored found (should be ignored by subdir .gitignore)")
+	}
+}
+
+func TestDiscoverIgnoreWithExcludes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Test that both ignore files and excludes work together
+	createProject(t, tmpDir, "project1", ".git/")
+	createProject(t, tmpDir, "ignored-by-gitignore", ".git/")
+	createProject(t, tmpDir, "node_modules", ".git/")
+
+	// Create .gitignore
+	gitignorePath := filepath.Join(tmpDir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("ignored-by-gitignore\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{"node_modules"}, // Also exclude node_modules
+		NoIgnore:    false,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find only project1
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	// Verify both ignored-by-gitignore and node_modules are excluded
+	for _, p := range projects {
+		basename := filepath.Base(p.Path)
+		if basename == "ignored-by-gitignore" {
+			t.Error("Found ignored-by-gitignore (should be ignored by .gitignore)")
+		}
+		if basename == "node_modules" {
+			t.Error("Found node_modules (should be excluded)")
+		}
+	}
+}
