@@ -107,6 +107,96 @@ docs: documentation   # No version bump
 
 This makes the git history clear, simplifies code review, and allows release-please to properly categorize changes in the changelog.
 
+## Testing Guidelines
+
+**All new features and bug fixes must include tests.** Maintain the high test coverage standards:
+
+### Coverage Requirements
+
+- **Target:** 80%+ coverage for all internal packages
+- **Current coverage:**
+  - `internal/cache`: 88.5%
+  - `internal/config`: 93.6%
+  - `internal/discover`: 89.0%
+  - `internal/icons`: 100%
+
+### Testing Patterns
+
+**Use table-driven tests** for testing multiple scenarios:
+```go
+tests := []struct {
+    name     string
+    input    string
+    expected string
+}{
+    {name: "case 1", input: "a", expected: "b"},
+    {name: "case 2", input: "c", expected: "d"},
+}
+for _, tt := range tests {
+    t.Run(tt.name, func(t *testing.T) {
+        // test logic
+    })
+}
+```
+
+**Use t.TempDir()** for filesystem isolation:
+```go
+tmpDir := t.TempDir()  // Auto-cleaned after test
+```
+
+**Use t.Setenv()** for environment variable testing:
+```go
+t.Setenv("XDG_CONFIG_HOME", tmpDir)  // Auto-restored after test
+```
+
+**Use helper functions** for common test setup:
+```go
+func createTestProject(t *testing.T, base, name string, markers ...string) string {
+    t.Helper()
+    // setup logic
+}
+```
+
+### Test Organization
+
+- **Unit tests:** Test individual functions and methods in isolation
+- **Integration tests:** Test complete workflows (e.g., `main_test.go` tests CLI end-to-end)
+- **Test files:** Name tests `<package>_test.go` in the same directory as the code
+
+### When to Add Tests
+
+1. **New features:** Add tests covering the happy path and edge cases
+2. **Bug fixes:** Add a test that would have caught the bug
+3. **Refactoring:** Ensure existing tests still pass; add tests for new code paths
+4. **Public API changes:** Update integration tests to cover new behavior
+
+### Running Tests
+
+```bash
+# Run all tests with coverage
+make test
+
+# Run tests with race detector and coverage report
+make test-coverage
+
+# View coverage in browser
+# (Opens coverage.html after running test-coverage)
+open coverage.html
+```
+
+### Example Test Workflow
+
+When adding a new feature:
+1. Write the feature code
+2. Create corresponding test file (e.g., `new_feature_test.go`)
+3. Add table-driven tests covering:
+   - Normal operation
+   - Edge cases (empty input, nil values, etc.)
+   - Error conditions
+4. Run `make test` to verify all tests pass
+5. Run `make test-coverage` to ensure coverage meets standards
+6. Commit feature code and tests together
+
 ## Distribution
 
 GoReleaser configuration (`.goreleaser.yaml`) handles multi-platform builds with:
