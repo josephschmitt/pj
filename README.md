@@ -1,6 +1,10 @@
-# pj - Project Finder CLI
+<div align="center">
+  <img src="docs/image.png" alt="pj logo" width="600">
 
-Fast project directory finder that searches your filesystem for git repositories and project directories. Built for speed and seamless integration with fuzzy finders like `fzf`.
+  # pj - Project Finder CLI
+
+  Fast project directory finder that searches your filesystem for git repositories and project directories. Built for speed and seamless integration with fuzzy finders like `fzf`.
+</div>
 
 ## Features
 
