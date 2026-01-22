@@ -20,17 +20,14 @@ Fast project directory finder that searches your filesystem for git repositories
 brew install josephschmitt/tap/pj
 ```
 
-### gah (macOS/Linux/Windows)
-
-```bash
-gah install josephschmitt/pj
-```
-
-### Nix (Flakes)
+### Nix (macOS/Linux)
 
 ```bash
 # Try it out without installing
 nix run github:josephschmitt/pj
+
+# Install to profile
+nix profile install github:josephschmitt/pj
 
 # Add to your flake.nix
 {
@@ -38,35 +35,94 @@ nix run github:josephschmitt/pj
 }
 ```
 
-### Go Install
+### Go Install (All Platforms)
 
 ```bash
 go install github.com/josephschmitt/pj@latest
 ```
 
+### gah (All Platforms)
+
+```bash
+# First, install gah: https://github.com/get-gah/gah
+gah install pj
+```
+
+Note: After the first release, a PR will be submitted to add `pj` to the gah database. Until then, use `gah install josephschmitt/pj`.
+
 ### Scoop (Windows)
 
 ```powershell
-scoop bucket add pj https://github.com/josephschmitt/scoop-bucket
+scoop bucket add josephschmitt https://github.com/josephschmitt/scoop-bucket
 scoop install pj
 ```
 
 ### Linux Packages
 
-Download `.deb`, `.rpm`, `.apk`, or Arch Linux packages from the [releases page](https://github.com/josephschmitt/pj/releases).
+Download packages from the [releases page](https://github.com/josephschmitt/pj/releases). Available for both `amd64` and `arm64` architectures.
 
-#### Debian/Ubuntu
+#### Debian/Ubuntu (.deb)
 
 ```bash
+# amd64
 wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.deb
 sudo dpkg -i pj_0.1.0_linux_amd64.deb
+
+# arm64
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.deb
+sudo dpkg -i pj_0.1.0_linux_arm64.deb
 ```
 
-#### Fedora/RHEL
+#### Fedora/RHEL/CentOS (.rpm)
 
 ```bash
+# amd64
 wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.rpm
 sudo rpm -i pj_0.1.0_linux_amd64.rpm
+
+# arm64
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.rpm
+sudo rpm -i pj_0.1.0_linux_arm64.rpm
+```
+
+#### Alpine (.apk)
+
+```bash
+# amd64
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.apk
+apk add --allow-untrusted pj_0.1.0_linux_amd64.apk
+
+# arm64
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.apk
+apk add --allow-untrusted pj_0.1.0_linux_arm64.apk
+```
+
+#### Arch Linux (.pkg.tar.zst)
+
+```bash
+# amd64
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.pkg.tar.zst
+sudo pacman -U pj_0.1.0_linux_amd64.pkg.tar.zst
+
+# arm64
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.pkg.tar.zst
+sudo pacman -U pj_0.1.0_linux_arm64.pkg.tar.zst
+```
+
+### Pre-built Binaries (All Platforms)
+
+Download the latest binaries for your platform from the [releases page](https://github.com/josephschmitt/pj/releases).
+
+Available platforms:
+- **macOS**: `darwin_amd64` (Intel), `darwin_arm64` (Apple Silicon)
+- **Linux**: `linux_amd64`, `linux_arm64`
+- **Windows**: `windows_amd64`, `windows_arm64`
+
+```bash
+# Example: macOS Apple Silicon
+wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_darwin_arm64.tar.gz
+tar -xzf pj_0.1.0_darwin_arm64.tar.gz
+sudo mv pj /usr/local/bin/
 ```
 
 ### From Source
@@ -76,10 +132,6 @@ git clone https://github.com/josephschmitt/pj.git
 cd pj
 make install
 ```
-
-### Pre-built Binaries
-
-Download the latest binaries for your platform from the [releases page](https://github.com/josephschmitt/pj/releases).
 
 ## Usage
 
