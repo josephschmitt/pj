@@ -54,7 +54,6 @@ func (d *Discoverer) Discover() ([]Project, error) {
 
 	// Fan-out: one goroutine per search path
 	for _, root := range d.config.SearchPaths {
-		// Expand home directory
 		if len(root) > 0 && root[0] == '~' {
 			home, err := os.UserHomeDir()
 			if err != nil {
@@ -63,7 +62,6 @@ func (d *Discoverer) Discover() ([]Project, error) {
 			root = filepath.Join(home, root[1:])
 		}
 
-		// Check if path exists
 		if _, err := os.Stat(root); os.IsNotExist(err) {
 			if d.verbose {
 				fmt.Fprintf(os.Stderr, "Skipping non-existent path: %s\n", root)
@@ -81,13 +79,11 @@ func (d *Discoverer) Discover() ([]Project, error) {
 		}(root)
 	}
 
-	// Close channel when all walkers done
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
 
-	// Collect and deduplicate
 	seen := make(map[string]bool)
 	var projects []Project
 	for p := range results {
@@ -112,11 +108,9 @@ func (d *Discoverer) Discover() ([]Project, error) {
 func (d *Discoverer) walkPath(root string, results chan<- Project) {
 	baseDepth := strings.Count(root, string(os.PathSeparator))
 
-	// Initialize ignore stack
 	ignoreFileNames := []string{".gitignore", ".ignore"}
 	ignoreStack := NewIgnoreStack(!d.config.NoIgnore, ignoreFileNames)
 
-	// Track previous depth for detecting ascent
 	previousDepth := -1
 
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -128,33 +122,27 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 			return nil
 		}
 
-		// Calculate current depth
 		currentDepth := strings.Count(path, string(os.PathSeparator)) - baseDepth
 
-		// Handle directory ascent - pop ignore stack entries
 		if previousDepth >= 0 && currentDepth <= previousDepth {
 			ignoreStack.Leave(currentDepth)
 		}
 		previousDepth = currentDepth
 
-		// Check if this path should be ignored (based on parent's rules)
 		if ignoreStack.ShouldIgnore(path, true) {
 			return fs.SkipDir
 		}
 
-		// Enter directory - check for ignore files
 		if err := ignoreStack.Enter(path, currentDepth); err != nil {
 			if d.verbose {
 				fmt.Fprintf(os.Stderr, "Error loading ignore files in %s: %v\n", path, err)
 			}
 		}
 
-		// Check max depth
 		if currentDepth > d.config.MaxDepth {
 			return fs.SkipDir
 		}
 
-		// Check excludes
 		dirName := filepath.Base(path)
 		for _, exclude := range d.config.Excludes {
 			if matchPattern(dirName, exclude) {
@@ -202,12 +190,10 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 
 // matchPattern checks if a name matches a pattern (simple glob support)
 func matchPattern(name, pattern string) bool {
-	// Simple exact match for now
 	if name == pattern {
 		return true
 	}
 
-	// Simple prefix/suffix matching
 	if strings.HasPrefix(pattern, "*") {
 		return strings.HasSuffix(name, pattern[1:])
 	}
@@ -215,7 +201,6 @@ func matchPattern(name, pattern string) bool {
 		return strings.HasPrefix(name, pattern[:len(pattern)-1])
 	}
 
-	// Try filepath.Match for glob patterns
 	matched, err := filepath.Match(pattern, name)
 	if err == nil && matched {
 		return true

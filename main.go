@@ -43,14 +43,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Load configuration
 	cfg, err := config.Load(cli.Config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Merge CLI flags with config
 	if err := cfg.MergeFlags(&cli); err != nil {
 		fmt.Fprintf(os.Stderr, "Error merging config: %v\n", err)
 		os.Exit(1)
@@ -60,7 +58,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Config: %+v\n", cfg)
 	}
 
-	// Handle icon map overrides
 	iconMapper := icons.NewMapper(cfg.Icons)
 	if len(cli.IconMap) > 0 {
 		for _, mapping := range cli.IconMap {
@@ -71,10 +68,8 @@ func main() {
 		}
 	}
 
-	// Initialize cache
 	cacheManager := cache.New(cfg, cli.Verbose)
 
-	// Handle cache clearing
 	if cli.ClearCache {
 		if err := cacheManager.Clear(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error clearing cache: %v\n", err)
@@ -88,7 +83,6 @@ func main() {
 
 	var projects []discover.Project
 
-	// Try cache first (unless --no-cache)
 	if !cli.NoCache {
 		cached, err := cacheManager.Get()
 		if err == nil && cached != nil {
@@ -101,7 +95,6 @@ func main() {
 		}
 	}
 
-	// Discover projects if no cache hit
 	if projects == nil {
 		discoverer := discover.New(cfg, cli.Verbose)
 		projects, err = discoverer.Discover()
@@ -114,13 +107,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Discovered %d projects\n", len(projects))
 		}
 
-		// Cache results
 		if err := cacheManager.Set(projects); err != nil && cli.Verbose {
 			fmt.Fprintf(os.Stderr, "Warning: failed to cache results: %v\n", err)
 		}
 	}
 
-	// Output projects
 	for _, p := range projects {
 		output := p.Path
 		if cli.Icons && !cli.Strip {

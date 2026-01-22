@@ -40,18 +40,15 @@ func (is *IgnoreStack) Enter(dir string, depth int) error {
 		return nil
 	}
 
-	// Check each ignore file type
 	for _, fileName := range is.fileNames {
 		ignoreFilePath := filepath.Join(dir, fileName)
 		if _, err := os.Stat(ignoreFilePath); err == nil {
-			// Ignore file exists, parse it
 			matcher, err := ignore.CompileIgnoreFile(ignoreFilePath)
 			if err != nil {
 				// Silently skip malformed ignore files
 				continue
 			}
 
-			// Add to stack
 			is.stack = append(is.stack, &ignoreEntry{
 				depth:   depth,
 				matcher: matcher,
@@ -70,7 +67,6 @@ func (is *IgnoreStack) Leave(depth int) {
 		return
 	}
 
-	// Pop all entries deeper than current depth
 	for len(is.stack) > 0 && is.stack[len(is.stack)-1].depth >= depth {
 		is.stack = is.stack[:len(is.stack)-1]
 	}
@@ -88,14 +84,12 @@ func (is *IgnoreStack) ShouldIgnore(path string, isDir bool) bool {
 	for i := len(is.stack) - 1; i >= 0; i-- {
 		entry := is.stack[i]
 
-		// Convert absolute path to relative path from the ignore file's directory
 		relPath, err := filepath.Rel(entry.dir, path)
 		if err != nil {
 			// If we can't make it relative, skip this matcher
 			continue
 		}
 
-		// Normalize path separators for the matcher
 		relPath = filepath.ToSlash(relPath)
 
 		// For directories, append trailing slash for proper matching
@@ -104,7 +98,6 @@ func (is *IgnoreStack) ShouldIgnore(path string, isDir bool) bool {
 			relPath = relPath + "/"
 		}
 
-		// Check if the path matches any ignore pattern
 		if entry.matcher.MatchesPath(relPath) {
 			return true
 		}

@@ -31,12 +31,10 @@ type CLIFlags interface {
 func Load(configPath string) (*Config, error) {
 	cfg := defaults()
 
-	// Determine config file path
 	if configPath == "" {
 		configPath = defaultConfigPath()
 	}
 
-	// Expand home directory
 	if len(configPath) > 0 && configPath[0] == '~' {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -45,7 +43,6 @@ func Load(configPath string) (*Config, error) {
 		configPath = filepath.Join(home, configPath[1:])
 	}
 
-	// Try to load config file
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		// If file doesn't exist, use defaults
@@ -55,7 +52,6 @@ func Load(configPath string) (*Config, error) {
 		return nil, err
 	}
 
-	// Parse YAML
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, err
 	}
@@ -65,13 +61,11 @@ func Load(configPath string) (*Config, error) {
 
 // MergeFlags merges CLI flags into the config (CLI flags take precedence)
 func (c *Config) MergeFlags(cli interface{}) error {
-	// Use reflection to access fields
 	v := reflect.ValueOf(cli)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 
-	// Get Path field
 	if pathField := v.FieldByName("Path"); pathField.IsValid() && pathField.Kind() == reflect.Slice {
 		if pathField.Len() > 0 {
 			for i := 0; i < pathField.Len(); i++ {
@@ -81,7 +75,6 @@ func (c *Config) MergeFlags(cli interface{}) error {
 		}
 	}
 
-	// Get Marker field
 	if markerField := v.FieldByName("Marker"); markerField.IsValid() && markerField.Kind() == reflect.Slice {
 		if markerField.Len() > 0 {
 			for i := 0; i < markerField.Len(); i++ {
@@ -91,7 +84,6 @@ func (c *Config) MergeFlags(cli interface{}) error {
 		}
 	}
 
-	// Get Exclude field
 	if excludeField := v.FieldByName("Exclude"); excludeField.IsValid() && excludeField.Kind() == reflect.Slice {
 		if excludeField.Len() > 0 {
 			for i := 0; i < excludeField.Len(); i++ {
@@ -101,14 +93,12 @@ func (c *Config) MergeFlags(cli interface{}) error {
 		}
 	}
 
-	// Get MaxDepth field
 	if maxDepthField := v.FieldByName("MaxDepth"); maxDepthField.IsValid() && maxDepthField.Kind() == reflect.Int {
 		if maxDepth := int(maxDepthField.Int()); maxDepth > 0 {
 			c.MaxDepth = maxDepth
 		}
 	}
 
-	// Get NoIgnore field
 	if noIgnoreField := v.FieldByName("NoIgnore"); noIgnoreField.IsValid() && noIgnoreField.Kind() == reflect.Bool {
 		c.NoIgnore = noIgnoreField.Bool()
 	}
