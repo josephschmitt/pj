@@ -241,6 +241,78 @@ pj/
 
 **Marker Specificity Map**: When multiple markers exist in the same directory, the one with highest specificity is used. Language-specific markers (10) rank higher than generic markers (1).
 
+## Code Quality Guidelines
+
+### Commenting Philosophy
+
+**Do not add low-quality one-liner comments.** Comments should only be added when the code itself is not clear enough to communicate intent or purpose.
+
+**Bad (unnecessary comments):**
+```go
+// Create cache directory
+os.MkdirAll(cacheDir, 0755)
+
+// Loop through projects
+for _, p := range projects {
+    // Print the path
+    fmt.Println(p.Path)
+}
+```
+
+**Good (self-documenting code):**
+```go
+os.MkdirAll(cacheDir, 0755)
+
+for _, p := range projects {
+    fmt.Println(p.Path)
+}
+```
+
+**When to add comments:**
+
+1. **Complex algorithms or non-obvious logic:**
+```go
+// Sort by priority (higher first), then by path
+// This ensures language-specific projects appear before generic git repos
+sort.Slice(projects, func(i, j int) bool {
+    if projects[i].Priority != projects[j].Priority {
+        return projects[i].Priority > projects[j].Priority
+    }
+    return projects[i].Path < projects[j].Path
+})
+```
+
+2. **Why something is done a certain way (not what):**
+```go
+// Create a copy to avoid mutations from external code
+m := make(map[string]string)
+for k, v := range iconMap {
+    m[k] = v
+}
+```
+
+3. **Package-level documentation:**
+```go
+// Package cache provides TTL-based JSON caching with config-hash keys.
+// Cache files are named using a SHA256 hash of the configuration,
+// ensuring different configurations get separate cache files.
+package cache
+```
+
+4. **Public API documentation (required for exported functions/types):**
+```go
+// New creates a new cache manager with the given configuration.
+// The cache directory is determined by XDG_CACHE_HOME or defaults to ~/.cache/pj.
+func New(cfg *config.Config, verbose bool) *Manager {
+    // ...
+}
+```
+
+**Prefer:**
+- Descriptive variable and function names over comments
+- Self-documenting code structure over explanatory comments
+- Extracting complex logic into well-named functions over inline comments
+
 ## Dependencies
 
 - `github.com/alecthomas/kong` - CLI argument parsing with struct tags
