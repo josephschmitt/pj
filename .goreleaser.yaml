@@ -24,10 +24,6 @@ builds:
 
 archives:
   - id: pj
-    format: tar.gz
-    format_overrides:
-      - goos: windows
-        format: zip
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -55,7 +51,7 @@ changelog:
       - Merge pull request
       - Merge branch
 
-brews:
+homebrew:
   - name: pj
     repository:
       owner: josephschmitt
