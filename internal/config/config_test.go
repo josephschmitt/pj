@@ -210,7 +210,9 @@ icons:
 		}
 
 		// Clean up
-		os.Chmod(configPath, 0644)
+		if err := os.Chmod(configPath, 0644); err != nil {
+			t.Logf("Warning: failed to restore permissions: %v", err)
+		}
 	})
 }
 

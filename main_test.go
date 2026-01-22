@@ -17,7 +17,11 @@ var (
 // TestMain builds the binary before running tests and cleans up after
 func TestMain(m *testing.M) {
 	// Build the binary
-	binaryPath = filepath.Join(os.TempDir(), "pj-test-binary")
+	binaryName := "pj-test-binary"
+	if os.Getenv("GOOS") == "windows" || filepath.Ext(os.Args[0]) == ".exe" {
+		binaryName += ".exe"
+	}
+	binaryPath = filepath.Join(os.TempDir(), binaryName)
 	build := exec.Command("go", "build", "-o", binaryPath)
 	if err := build.Run(); err != nil {
 		os.Stderr.WriteString("Failed to build binary: " + err.Error() + "\n")
@@ -47,7 +51,9 @@ func setupTestEnv(t *testing.T) *testEnv {
 
 	// Create an empty config file to override defaults
 	configDir := filepath.Join(tmpConfig, "pj")
-	os.MkdirAll(configDir, 0755)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	configPath := filepath.Join(configDir, "config.yaml")
 	emptyConfig := `search_paths: []
 markers:
@@ -69,7 +75,9 @@ excludes:
   - build
 cache_ttl: 300
 `
-	os.WriteFile(configPath, []byte(emptyConfig), 0644)
+	if err := os.WriteFile(configPath, []byte(emptyConfig), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	return &testEnv{
 		configDir: tmpConfig,
@@ -340,7 +348,9 @@ func TestCLI_Excludes(t *testing.T) {
 	// Create projects, one in node_modules
 	createTestProject(t, tmpDir, "project1", ".git/")
 	nodeModulesDir := filepath.Join(tmpDir, "node_modules")
-	os.MkdirAll(nodeModulesDir, 0755)
+	if err := os.MkdirAll(nodeModulesDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	createTestProject(t, nodeModulesDir, "excluded-project", ".git/")
 
 	// Run normally (node_modules is in default excludes)

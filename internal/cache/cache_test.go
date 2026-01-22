@@ -200,7 +200,9 @@ func TestGet(t *testing.T) {
 
 		m := New(cfg, false)
 		cacheDir := filepath.Join(tmpDir, "pj")
-		os.MkdirAll(cacheDir, 0755)
+		if err := os.MkdirAll(cacheDir, 0755); err != nil {
+			t.Fatal(err)
+		}
 
 		// Create cache file
 		projects := []discover.Project{
@@ -208,11 +210,15 @@ func TestGet(t *testing.T) {
 		}
 		data, _ := json.Marshal(projects)
 		cachePath := m.getCachePath()
-		os.WriteFile(cachePath, data, 0644)
+		if err := os.WriteFile(cachePath, data, 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		// Set modification time to 2 seconds ago (older than TTL)
 		oldTime := time.Now().Add(-2 * time.Second)
-		os.Chtimes(cachePath, oldTime, oldTime)
+		if err := os.Chtimes(cachePath, oldTime, oldTime); err != nil {
+			t.Fatal(err)
+		}
 
 		_, err := m.Get()
 		if err == nil {
@@ -236,11 +242,15 @@ func TestGet(t *testing.T) {
 
 		m := New(cfg, false)
 		cacheDir := filepath.Join(tmpDir, "pj")
-		os.MkdirAll(cacheDir, 0755)
+		if err := os.MkdirAll(cacheDir, 0755); err != nil {
+			t.Fatal(err)
+		}
 
 		// Write invalid JSON
 		cachePath := m.getCachePath()
-		os.WriteFile(cachePath, []byte("invalid json"), 0644)
+		if err := os.WriteFile(cachePath, []byte("invalid json"), 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		_, err := m.Get()
 		if err == nil {
@@ -261,7 +271,9 @@ func TestGet(t *testing.T) {
 
 		m := New(cfg, false)
 		cacheDir := filepath.Join(tmpDir, "pj")
-		os.MkdirAll(cacheDir, 0755)
+		if err := os.MkdirAll(cacheDir, 0755); err != nil {
+			t.Fatal(err)
+		}
 
 		// Create valid cache
 		expectedProjects := []discover.Project{
@@ -270,7 +282,9 @@ func TestGet(t *testing.T) {
 		}
 		data, _ := json.MarshalIndent(expectedProjects, "", "  ")
 		cachePath := m.getCachePath()
-		os.WriteFile(cachePath, data, 0644)
+		if err := os.WriteFile(cachePath, data, 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		projects, err := m.Get()
 		if err != nil {
@@ -386,8 +400,12 @@ func TestClear(t *testing.T) {
 
 		// Create cache directory and files
 		cacheDir := filepath.Join(tmpDir, "pj")
-		os.MkdirAll(cacheDir, 0755)
-		os.WriteFile(filepath.Join(cacheDir, "cache-test.json"), []byte("test"), 0644)
+		if err := os.MkdirAll(cacheDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(cacheDir, "cache-test.json"), []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
 
 		err := m.Clear()
 		if err != nil {

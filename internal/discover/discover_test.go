@@ -154,12 +154,18 @@ func TestDiscover(t *testing.T) {
 	// Create excluded directory
 	excludedDir := createProject(t, tmpDir, "excluded", "")
 	nodeModulesDir := filepath.Join(excludedDir, "node_modules")
-	os.MkdirAll(filepath.Join(nodeModulesDir, ".git"), 0755)
+	if err := os.MkdirAll(filepath.Join(nodeModulesDir, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create deep directory beyond max depth
 	deepPath := filepath.Join(tmpDir, "deep", "l1", "l2", "l3", "l4")
-	os.MkdirAll(deepPath, 0755)
-	os.MkdirAll(filepath.Join(deepPath, ".git"), 0755)
+	if err := os.MkdirAll(deepPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(deepPath, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg := &config.Config{
 		SearchPaths: []string{tmpDir},
@@ -277,7 +283,9 @@ func TestDiscoverTildeExpansion(t *testing.T) {
 
 	// Create a test directory in home
 	testDir := filepath.Join(home, ".pj-test-"+t.Name())
-	os.MkdirAll(testDir, 0755)
+	if err := os.MkdirAll(testDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(testDir)
 
 	createProject(t, testDir, "homeproject", ".git/")
