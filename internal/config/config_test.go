@@ -68,6 +68,11 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("CacheTTL = %d, want 300", cfg.CacheTTL)
 	}
 
+	// Check nested defaults to true
+	if !cfg.Nested {
+		t.Error("Nested should default to true")
+	}
+
 	// Check icons map
 	if len(cfg.Icons) == 0 {
 		t.Error("defaults() should have icons")
@@ -378,6 +383,48 @@ func TestMergeFlags(t *testing.T) {
 		}
 		if len(cfg.SearchPaths) != 3 {
 			t.Error("MergeFlags should work with value struct")
+		}
+	})
+
+	t.Run("NoNested flag sets Nested to false", func(t *testing.T) {
+		cfg := &Config{
+			Nested: true,
+		}
+
+		flags := struct {
+			NoNested bool
+		}{
+			NoNested: true,
+		}
+
+		err := cfg.MergeFlags(flags)
+		if err != nil {
+			t.Fatalf("MergeFlags() error = %v, want nil", err)
+		}
+
+		if cfg.Nested {
+			t.Error("Nested should be false when NoNested flag is true")
+		}
+	})
+
+	t.Run("NoNested flag false doesn't change Nested", func(t *testing.T) {
+		cfg := &Config{
+			Nested: true,
+		}
+
+		flags := struct {
+			NoNested bool
+		}{
+			NoNested: false,
+		}
+
+		err := cfg.MergeFlags(flags)
+		if err != nil {
+			t.Fatalf("MergeFlags() error = %v, want nil", err)
+		}
+
+		if !cfg.Nested {
+			t.Error("Nested should remain true when NoNested flag is false")
 		}
 	})
 }

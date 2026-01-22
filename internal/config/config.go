@@ -16,6 +16,7 @@ type Config struct {
 	Excludes    []string          `yaml:"excludes"`
 	CacheTTL    int               `yaml:"cache_ttl"` // seconds
 	NoIgnore    bool              `yaml:"no_ignore"` // Don't respect .gitignore and .ignore files
+	Nested      bool              `yaml:"nested"`    // Continue discovery inside projects
 	Icons       map[string]string `yaml:"icons"`
 }
 
@@ -103,6 +104,12 @@ func (c *Config) MergeFlags(cli interface{}) error {
 		c.NoIgnore = noIgnoreField.Bool()
 	}
 
+	if noNestedField := v.FieldByName("NoNested"); noNestedField.IsValid() && noNestedField.Kind() == reflect.Bool {
+		if noNestedField.Bool() {
+			c.Nested = false
+		}
+	}
+
 	return nil
 }
 
@@ -141,6 +148,7 @@ func defaults() *Config {
 			"build",
 		},
 		CacheTTL: 300, // 5 minutes
+		Nested:   true,
 		Icons: map[string]string{
 			".git":           "",
 			"go.mod":         "󰟓",

@@ -784,3 +784,223 @@ func TestDiscoverIDEMarkers(t *testing.T) {
 		}
 	}
 }
+
+func TestDiscoverNested(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create nested structure:
+	// tmpDir/
+	//   outer/
+	//     .git/
+	//     apps/
+	//       app1/
+	//         package.json
+	//     packages/
+	//       pkg1/
+	//         go.mod
+
+	outerDir := createProject(t, tmpDir, "outer", ".git/")
+
+	appsDir := filepath.Join(outerDir, "apps")
+	if err := os.MkdirAll(appsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	createProject(t, appsDir, "app1", "package.json")
+
+	packagesDir := filepath.Join(outerDir, "packages")
+	if err := os.MkdirAll(packagesDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	createProject(t, packagesDir, "pkg1", "go.mod")
+
+	tests := []struct {
+		name             string
+		nested           bool
+		expectedCount    int
+		shouldContain    []string
+		shouldNotContain []string
+	}{
+		{
+			name:             "nested enabled finds inner projects",
+			nested:           true,
+			expectedCount:    3,
+			shouldContain:    []string{"outer", "app1", "pkg1"},
+			shouldNotContain: []string{},
+		},
+		{
+			name:             "nested disabled skips inner projects",
+			nested:           false,
+			expectedCount:    1,
+			shouldContain:    []string{"outer"},
+			shouldNotContain: []string{"app1", "pkg1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{
+				SearchPaths: []string{tmpDir},
+				Markers:     []string{".git", "package.json", "go.mod"},
+				MaxDepth:    5,
+				Excludes:    []string{},
+				Nested:      tt.nested,
+			}
+
+			d := New(cfg, false)
+			projects, err := d.Discover()
+			if err != nil {
+				t.Fatalf("Discover() error = %v", err)
+			}
+
+			if len(projects) != tt.expectedCount {
+				t.Errorf("Discover() found %d projects, want %d", len(projects), tt.expectedCount)
+				for _, p := range projects {
+					t.Logf("  Found: %s", p.Path)
+				}
+			}
+
+			found := make(map[string]bool)
+			for _, p := range projects {
+				found[filepath.Base(p.Path)] = true
+			}
+
+			for _, name := range tt.shouldContain {
+				if !found[name] {
+					t.Errorf("%s not found in results", name)
+				}
+			}
+
+			for _, name := range tt.shouldNotContain {
+				if found[name] {
+					t.Errorf("%s found in results (should not be)", name)
+				}
+			}
+		})
+	}
+}
+
+func TestDiscoverNestedWithMaxDepth(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create deeply nested structure
+	// tmpDir/outer/.git/
+	// tmpDir/outer/level1/level2/level3/inner/go.mod
+	outerDir := createProject(t, tmpDir, "outer", ".git/")
+	deepPath := filepath.Join(outerDir, "level1", "level2", "level3")
+	if err := os.MkdirAll(deepPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+	createProject(t, deepPath, "inner", "go.mod")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git", "go.mod"},
+		MaxDepth:    3, // Should find outer but not inner
+		Excludes:    []string{},
+		Nested:      true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should only find outer (inner is beyond max depth)
+	if len(projects) != 1 {
+		t.Errorf("Discover() with nested+maxdepth found %d projects, want 1", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	if filepath.Base(projects[0].Path) != "outer" {
+		t.Errorf("Expected to find 'outer', got %s", filepath.Base(projects[0].Path))
+	}
+}
+
+func TestDiscoverNestedWithExcludes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create structure with excluded directory
+	// tmpDir/outer/.git/
+	// tmpDir/outer/node_modules/inner/go.mod (should be excluded)
+	// tmpDir/outer/subproject/go.mod (should be found)
+	outerDir := createProject(t, tmpDir, "outer", ".git/")
+
+	nodeModules := filepath.Join(outerDir, "node_modules")
+	if err := os.MkdirAll(nodeModules, 0755); err != nil {
+		t.Fatal(err)
+	}
+	createProject(t, nodeModules, "inner", "go.mod")
+	createProject(t, outerDir, "subproject", "go.mod")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git", "go.mod"},
+		MaxDepth:    5,
+		Excludes:    []string{"node_modules"},
+		Nested:      true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2 (outer and subproject)", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	for _, p := range projects {
+		if strings.Contains(p.Path, "node_modules") {
+			t.Error("Found project in node_modules (should be excluded)")
+		}
+	}
+}
+
+func TestDiscoverNestedWithGitignore(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	outerDir := createProject(t, tmpDir, "outer", ".git/")
+	createProject(t, outerDir, "ignored-inner", "go.mod")
+	createProject(t, outerDir, "visible-inner", "go.mod")
+
+	// Create .gitignore in outer that ignores ignored-inner
+	gitignorePath := filepath.Join(outerDir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("ignored-inner\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git", "go.mod"},
+		MaxDepth:    5,
+		Excludes:    []string{},
+		Nested:      true,
+		NoIgnore:    false,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2 (outer and visible-inner)", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+
+	for _, p := range projects {
+		if filepath.Base(p.Path) == "ignored-inner" {
+			t.Error("Found ignored-inner (should be ignored by .gitignore)")
+		}
+	}
+}

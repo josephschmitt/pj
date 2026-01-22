@@ -114,6 +114,8 @@ func (m *Manager) computeConfigHash() string {
 
 	h.Write([]byte(fmt.Sprintf("%t", m.config.NoIgnore)))
 
+	h.Write([]byte(fmt.Sprintf("%t", m.config.Nested)))
+
 	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }
 
