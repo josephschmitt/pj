@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/josephschmitt/pj/compare/v1.2.0...v1.3.0) (2026-01-22)
+
+
+### Features
+
+* add IDE project markers for VS Code, IntelliJ, Fleet, Eclipse, and Zed ([#9](https://github.com/josephschmitt/pj/issues/9)) ([583f4bb](https://github.com/josephschmitt/pj/commit/583f4bbe005b2d5a75da3f4e6381733a9a2a2905))
+* add nested project discovery for monorepo support ([#11](https://github.com/josephschmitt/pj/issues/11)) ([b6ff94a](https://github.com/josephschmitt/pj/commit/b6ff94a9076372cddf20b92b0e30b1b3e7ba77a6))
+
+
+### Bug Fixes
+
+* switch release-please to manifest mode to prevent duplicate release errors ([073244a](https://github.com/josephschmitt/pj/commit/073244a8ea0ad07c641ffe4dbe8f2744f8f48e77))
+
 ## [1.2.0](https://github.com/josephschmitt/pj/compare/v1.1.0...v1.2.0) (2026-01-22)
 
 
