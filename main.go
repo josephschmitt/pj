@@ -23,6 +23,7 @@ type CLI struct {
 	Exclude    []string `short:"e" help:"Exclude pattern (repeatable)"`
 	MaxDepth   int      `short:"d" help:"Maximum search depth"`
 	NoIgnore   bool     `help:"Don't respect .gitignore and .ignore files"`
+	NoNested   bool     `help:"Don't search for projects inside other projects"`
 	Icons      bool     `help:"Show marker-based icons"`
 	Strip      bool     `help:"Strip icons from output"`
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`

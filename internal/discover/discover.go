@@ -181,8 +181,10 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 				Priority: bestPriority,
 			}
 
-			// Found a project, skip its subdirectories
-			return fs.SkipDir
+			// Skip subdirectories unless nested discovery is enabled
+			if !d.config.Nested {
+				return fs.SkipDir
+			}
 		}
 
 		return nil

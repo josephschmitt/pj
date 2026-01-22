@@ -586,3 +586,72 @@ func TestCLI_StdinEmptyInput(t *testing.T) {
 		t.Error("Empty stdin should fall back to normal behavior with -p flag")
 	}
 }
+
+func TestCLI_NoNested(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create nested structure:
+	// tmpDir/
+	//   outer/
+	//     .git/
+	//     apps/
+	//       app1/
+	//         package.json
+	//     packages/
+	//       pkg1/
+	//         go.mod
+
+	outerDir := createTestProject(t, tmpDir, "outer", ".git/")
+
+	appsDir := filepath.Join(outerDir, "apps")
+	if err := os.MkdirAll(appsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	createTestProject(t, appsDir, "app1", "package.json")
+
+	packagesDir := filepath.Join(outerDir, "packages")
+	if err := os.MkdirAll(packagesDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	createTestProject(t, packagesDir, "pkg1", "go.mod")
+
+	// Default behavior (nested discovery enabled) should find all 3 projects
+	stdout1, stderr1, err := runPJ(t, "-p", tmpDir, "--no-cache")
+	if err != nil {
+		t.Fatalf("pj without --no-nested failed: %v\nStderr: %s", err, stderr1)
+	}
+
+	lines1 := strings.Split(strings.TrimSpace(stdout1), "\n")
+	if len(lines1) != 3 {
+		t.Errorf("Without --no-nested, expected 3 projects, got %d\nOutput: %s", len(lines1), stdout1)
+	}
+	if !strings.Contains(stdout1, "outer") {
+		t.Error("Output should contain outer")
+	}
+	if !strings.Contains(stdout1, "app1") {
+		t.Error("Output should contain app1")
+	}
+	if !strings.Contains(stdout1, "pkg1") {
+		t.Error("Output should contain pkg1")
+	}
+
+	// With --no-nested, should only find outer
+	stdout2, stderr2, err := runPJ(t, "-p", tmpDir, "--no-cache", "--no-nested")
+	if err != nil {
+		t.Fatalf("pj with --no-nested failed: %v\nStderr: %s", err, stderr2)
+	}
+
+	lines2 := strings.Split(strings.TrimSpace(stdout2), "\n")
+	if len(lines2) != 1 {
+		t.Errorf("With --no-nested, expected 1 project, got %d\nOutput: %s", len(lines2), stdout2)
+	}
+	if !strings.Contains(stdout2, "outer") {
+		t.Error("Output should contain outer")
+	}
+	if strings.Contains(stdout2, "app1") {
+		t.Error("Output should not contain app1 with --no-nested")
+	}
+	if strings.Contains(stdout2, "pkg1") {
+		t.Error("Output should not contain pkg1 with --no-nested")
+	}
+}
