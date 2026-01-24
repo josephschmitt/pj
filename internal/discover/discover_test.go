@@ -275,22 +275,27 @@ func TestDiscoverTildeExpansion(t *testing.T) {
 	// Create a temporary directory to use as our mock HOME
 	tmpHome := t.TempDir()
 
-	// Save the original HOME and restore it after the test
+	// Save the original HOME and USERPROFILE and restore them after the test
 	originalHome := os.Getenv("HOME")
-	if originalHome == "" {
-		// On Windows or if HOME isn't set, try USERPROFILE
-		originalHome = os.Getenv("USERPROFILE")
-	}
+	originalUserProfile := os.Getenv("USERPROFILE")
+
 	t.Cleanup(func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
 		} else {
 			os.Unsetenv("HOME")
 		}
+		if originalUserProfile != "" {
+			os.Setenv("USERPROFILE", originalUserProfile)
+		} else {
+			os.Unsetenv("USERPROFILE")
+		}
 	})
 
-	// Set HOME to our temporary directory
+	// Set both HOME and USERPROFILE to our temporary directory
+	// os.UserHomeDir() uses USERPROFILE on Windows and HOME on Unix
 	os.Setenv("HOME", tmpHome)
+	os.Setenv("USERPROFILE", tmpHome)
 
 	// Create a project directory inside our mock home
 	projectDir := filepath.Join(tmpHome, "projects")
