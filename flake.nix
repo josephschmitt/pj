@@ -16,7 +16,7 @@
           pname = "pj";
           version = self.rev or "dev";
           src = ./.;
-          vendorHash = "sha256-gshmRlgP4rgvzT8SFeyj9k28qlYLC/S2Llni0ZoE6kA=";
+          vendorHash = "sha256-rya2afSV9Y1hmUZU0wyR9NETBl3TXD/OTHv0zvVl8v8=";
 
           ldflags = [
             "-X main.version=${self.rev or "dev"}"

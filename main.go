@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,6 +30,7 @@ type CLI struct {
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
+	JSON       bool     `short:"j" help:"Output results in JSON format"`
 	Verbose    bool     `short:"v" help:"Enable debug output"`
 	Version    bool     `short:"V" help:"Show version"`
 }
@@ -158,13 +160,46 @@ func main() {
 		}
 	}
 
-	for _, p := range projects {
-		output := p.Path
-		if cli.Icons && !cli.Strip {
-			icon := iconMapper.Get(p.Marker)
-			output = fmt.Sprintf("%s %s", icon, output)
+	if cli.JSON {
+		type projectJSON struct {
+			Path   string `json:"path"`
+			Name   string `json:"name"`
+			Marker string `json:"marker"`
+			Icon   string `json:"icon,omitempty"`
 		}
-		fmt.Println(output)
+		type outputJSON struct {
+			Projects []projectJSON `json:"projects"`
+		}
+
+		jsonProjects := make([]projectJSON, len(projects))
+		for i, p := range projects {
+			icon := ""
+			if cli.Icons {
+				icon = iconMapper.Get(p.Marker)
+			}
+			jsonProjects[i] = projectJSON{
+				Path:   p.Path,
+				Name:   filepath.Base(p.Path),
+				Marker: p.Marker,
+				Icon:   icon,
+			}
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(outputJSON{Projects: jsonProjects}); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		for _, p := range projects {
+			output := p.Path
+			if cli.Icons && !cli.Strip {
+				icon := iconMapper.Get(p.Marker)
+				output = fmt.Sprintf("%s %s", icon, output)
+			}
+			fmt.Println(output)
+		}
 	}
 
 	ctx.Exit(0)
