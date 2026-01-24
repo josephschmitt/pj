@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/josephschmitt/pj/compare/v1.3.0...v1.4.0) (2026-01-24)
+
+
+### Features
+
+* add JSON output mode with marker field for editor integration  ([#12](https://github.com/josephschmitt/pj/issues/12)) ([9de663c](https://github.com/josephschmitt/pj/commit/9de663cb19c903d307fba8349ee14ee10a5fe744))
+
 ## [1.3.0](https://github.com/josephschmitt/pj/compare/v1.2.0...v1.3.0) (2026-01-22)
 
 
