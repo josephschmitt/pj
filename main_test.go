@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -653,5 +654,214 @@ func TestCLI_NoNested(t *testing.T) {
 	}
 	if strings.Contains(stdout2, "pkg1") {
 		t.Error("Output should not contain pkg1 with --no-nested")
+	}
+}
+func TestCLI_JSONOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test projects with different markers
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+	createTestProject(t, tmpDir, "js-project", "package.json")
+	createTestProject(t, tmpDir, "rust-project", "Cargo.toml")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json")
+	if err != nil {
+		t.Fatalf("pj --json failed: %v\nStderr: %s", err, stderr)
+	}
+
+	// Parse JSON output
+	var result struct {
+		Projects []struct {
+			Path   string `json:"path"`
+			Name   string `json:"name"`
+			Marker string `json:"marker"`
+			Icon   string `json:"icon,omitempty"`
+		} `json:"projects"`
+	}
+
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, stdout)
+	}
+
+	// Verify we found all 3 projects
+	if len(result.Projects) != 3 {
+		t.Errorf("Expected 3 projects in JSON, got %d", len(result.Projects))
+	}
+
+	// Verify each project has required fields
+	for i, proj := range result.Projects {
+		if proj.Path == "" {
+			t.Errorf("Project %d missing path field", i)
+		}
+		if proj.Name == "" {
+			t.Errorf("Project %d missing name field", i)
+		}
+		if proj.Marker == "" {
+			t.Errorf("Project %d missing marker field", i)
+		}
+		if !strings.HasPrefix(proj.Path, tmpDir) {
+			t.Errorf("Project %d path should start with tmpDir", i)
+		}
+	}
+
+	// Verify specific project markers
+	foundMarkers := make(map[string]bool)
+	for _, proj := range result.Projects {
+		foundMarkers[proj.Marker] = true
+	}
+
+	expectedMarkers := []string{"go.mod", "package.json", "Cargo.toml"}
+	for _, marker := range expectedMarkers {
+		if !foundMarkers[marker] {
+			t.Errorf("Expected to find project with marker %s", marker)
+		}
+	}
+}
+
+func TestCLI_JSONOutputWithIcons(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test project
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json", "--icons")
+	if err != nil {
+		t.Fatalf("pj --json --icons failed: %v\nStderr: %s", err, stderr)
+	}
+
+	// Parse JSON output
+	var result struct {
+		Projects []struct {
+			Path   string `json:"path"`
+			Name   string `json:"name"`
+			Marker string `json:"marker"`
+			Icon   string `json:"icon,omitempty"`
+		} `json:"projects"`
+	}
+
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, stdout)
+	}
+
+	if len(result.Projects) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(result.Projects))
+	}
+
+	proj := result.Projects[0]
+
+	// Verify icon field is populated when --icons is used
+	if proj.Icon == "" {
+		t.Error("Icon field should be populated when --icons flag is used")
+	}
+
+	// Verify marker is go.mod
+	if proj.Marker != "go.mod" {
+		t.Errorf("Expected marker to be go.mod, got %s", proj.Marker)
+	}
+
+	// Verify name is correct
+	if proj.Name != "go-project" {
+		t.Errorf("Expected name to be go-project, got %s", proj.Name)
+	}
+}
+
+func TestCLI_JSONOutputWithoutIcons(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create test project
+	createTestProject(t, tmpDir, "project", "package.json")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json")
+	if err != nil {
+		t.Fatalf("pj --json failed: %v\nStderr: %s", err, stderr)
+	}
+
+	// Parse JSON output
+	var result struct {
+		Projects []struct {
+			Path   string `json:"path"`
+			Name   string `json:"name"`
+			Marker string `json:"marker"`
+			Icon   string `json:"icon,omitempty"`
+		} `json:"projects"`
+	}
+
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, stdout)
+	}
+
+	if len(result.Projects) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(result.Projects))
+	}
+
+	proj := result.Projects[0]
+
+	// Verify icon field is empty when --icons is not used
+	if proj.Icon != "" {
+		t.Error("Icon field should be empty when --icons flag is not used")
+	}
+
+	// Verify other fields are populated
+	if proj.Path == "" || proj.Name == "" || proj.Marker == "" {
+		t.Error("Path, name, and marker fields should be populated")
+	}
+}
+
+func TestCLI_JSONEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Don't create any projects
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json")
+	if err != nil {
+		t.Fatalf("pj --json with no projects failed: %v\nStderr: %s", err, stderr)
+	}
+
+	// Parse JSON output
+	var result struct {
+		Projects []struct {
+			Path   string `json:"path"`
+			Name   string `json:"name"`
+			Marker string `json:"marker"`
+			Icon   string `json:"icon,omitempty"`
+		} `json:"projects"`
+	}
+
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, stdout)
+	}
+
+	// Verify empty array
+	if len(result.Projects) != 0 {
+		t.Errorf("Expected 0 projects, got %d", len(result.Projects))
+	}
+}
+
+func TestCLI_JSONOutputFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "test-project", ".git/")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json", "--icons")
+	if err != nil {
+		t.Fatalf("pj --json failed: %v\nStderr: %s", err, stderr)
+	}
+
+	// Verify output is valid JSON
+	if !json.Valid([]byte(stdout)) {
+		t.Errorf("Output is not valid JSON: %s", stdout)
+	}
+
+	// Verify JSON is properly indented (should have newlines and spaces)
+	if !strings.Contains(stdout, "\n") {
+		t.Error("JSON output should be indented (contain newlines)")
+	}
+
+	if !strings.Contains(stdout, "  ") {
+		t.Error("JSON output should be indented (contain spaces)")
+	}
+
+	// Verify root structure has "projects" key
+	if !strings.Contains(stdout, `"projects"`) {
+		t.Error("JSON output should contain 'projects' key")
 	}
 }
