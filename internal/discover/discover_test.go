@@ -272,30 +272,32 @@ func TestDiscoverNonExistentPath(t *testing.T) {
 }
 
 func TestDiscoverTildeExpansion(t *testing.T) {
-	tmpDir := t.TempDir()
-	createProject(t, tmpDir, "testproject", ".git/")
+	// Create a temporary directory to use as our mock HOME
+	tmpHome := t.TempDir()
 
-	// Use tilde path (this test assumes HOME is set)
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Skip("Cannot get home directory")
+	// Save the original HOME and restore it after the test
+	originalHome := os.Getenv("HOME")
+	if originalHome == "" {
+		// On Windows or if HOME isn't set, try USERPROFILE
+		originalHome = os.Getenv("USERPROFILE")
 	}
+	t.Cleanup(func() {
+		if originalHome != "" {
+			os.Setenv("HOME", originalHome)
+		} else {
+			os.Unsetenv("HOME")
+		}
+	})
 
-	// Create a test directory in home
-	testDir := filepath.Join(home, ".pj-test-"+t.Name())
-	if err := os.MkdirAll(testDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testDir)
+	// Set HOME to our temporary directory
+	os.Setenv("HOME", tmpHome)
 
-	createProject(t, testDir, "homeproject", ".git/")
+	// Create a project directory inside our mock home
+	projectDir := filepath.Join(tmpHome, "projects")
+	createProject(t, projectDir, "homeproject", ".git/")
 
-	// Calculate relative path from home
-	relPath, err := filepath.Rel(home, testDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tildePath := "~/" + relPath
+	// Use tilde path to reference the projects directory
+	tildePath := "~/projects"
 
 	cfg := &config.Config{
 		SearchPaths: []string{tildePath},
@@ -312,6 +314,12 @@ func TestDiscoverTildeExpansion(t *testing.T) {
 
 	if len(projects) != 1 {
 		t.Errorf("Discover() with tilde path found %d projects, want 1", len(projects))
+	}
+
+	// Verify the project path was correctly expanded
+	expectedPath := filepath.Join(tmpHome, "projects", "homeproject")
+	if len(projects) == 1 && projects[0].Path != expectedPath {
+		t.Errorf("Project path = %v, want %v", projects[0].Path, expectedPath)
 	}
 }
 
