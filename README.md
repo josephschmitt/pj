@@ -5,6 +5,9 @@
 
   Fast project directory finder that searches your filesystem for git repositories and project directories. Built for speed and seamless integration with fuzzy finders like [fzf](https://github.com/junegunn/fzf) and [television](https://github.com/alexpasmantier/television).
 </div>
+￼
+<img width="1187" height="842" alt="image" src="https://github.com/user-attachments/assets/009f465a-7a5a-4cea-9bb0-0f723591ea18" />
+<img width="1768" height="1167" alt="image" src="https://github.com/user-attachments/assets/8c8c4e94-0752-4cd4-8684-c2207830a873" />
 
 ## Features
 
