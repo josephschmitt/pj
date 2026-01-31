@@ -296,21 +296,23 @@ search_paths:
 # Each marker can be a simple string or an object with marker and icon fields
 markers:
   - marker: .git
-    icon: ""
+    icon: ""      # \ue65d - Git icon
   - marker: go.mod
-    icon: "󰟓"
+    icon: "󰟓"      # \U000f07d3 - Go icon
   - marker: package.json
-    icon: "󰎙"
+    icon: "󰎙"      # \U000f0399 - npm icon
   - marker: Cargo.toml
-    icon: ""
+    icon: ""      # \ue68b - Rust icon
   - marker: pyproject.toml
-    icon: ""
+    icon: ""      # \ue606 - Python icon
   - marker: Makefile
-    icon: ""
+    icon: ""      # \ue673 - Makefile icon
   - marker: flake.nix
-    icon: ""
-  - marker: composer.json
-    icon: ""
+    icon: ""      # \ue843 - Nix icon
+  - marker: .vscode
+    icon: "󰨞"      # \U000f0a1e - VS Code icon
+  - marker: .idea
+    icon: ""      # \ue7b5 - IntelliJ icon
   - marker: build.gradle
     # icon is optional - omit for no icon
 
