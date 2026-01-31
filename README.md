@@ -279,17 +279,29 @@ search_paths:
   - ~/development
   - ~/work
 
-# Files/directories that mark a project
+# Files/directories that mark a project (with optional icons)
+# Each marker can be a simple string or an object with marker and icon fields
 markers:
-  - .git
-  - go.mod
-  - package.json
-  - Cargo.toml
-  - pyproject.toml
-  - Makefile
-  - flake.nix
-  - composer.json
-  - build.gradle
+  - marker: .git
+    icon: ""      # \ue65d - Git icon
+  - marker: go.mod
+    icon: "󰟓"      # \U000f07d3 - Go icon
+  - marker: package.json
+    icon: "󰎙"      # \U000f0399 - npm icon
+  - marker: Cargo.toml
+    icon: ""      # \ue68b - Rust icon
+  - marker: pyproject.toml
+    icon: ""      # \ue606 - Python icon
+  - marker: Makefile
+    icon: ""      # \ue673 - Makefile icon
+  - marker: flake.nix
+    icon: ""      # \ue843 - Nix icon
+  - marker: .vscode
+    icon: "󰨞"      # \U000f0a1e - VS Code icon
+  - marker: .idea
+    icon: ""      # \ue7b5 - IntelliJ icon
+  - marker: build.gradle
+    # icon is optional - omit for no icon
 
 # Maximum directory depth to search
 max_depth: 3
@@ -308,18 +320,26 @@ excludes:
 
 # Cache TTL in seconds (default: 300 = 5 minutes)
 cache_ttl: 300
+```
 
-# Icon mappings (requires Nerd Fonts)
+#### Legacy Format (Deprecated)
+
+The old format with separate `markers` and `icons` fields is still supported for backward compatibility:
+
+```yaml
+# Old format (deprecated)
+markers:
+  - .git
+  - go.mod
+  - package.json
+
 icons:
   .git: ""
   go.mod: "󰟓"
   package.json: "󰎙"
-  Cargo.toml: ""
-  pyproject.toml: ""
-  Makefile: ""
-  flake.nix: ""
-  composer.json: ""
 ```
+
+If both formats are used, the new format takes precedence. Run with `-v` to see deprecation warnings.
 
 ### Config Priority
 

@@ -227,8 +227,9 @@ func TestDiscover(t *testing.T) {
 	}
 
 	// Verify deep directory was excluded by max depth
+	deepProjectPath := filepath.Join(tmpDir, "deep", "l1", "l2", "l3", "l4")
 	for _, p := range projects {
-		if strings.Contains(p.Path, "l4") {
+		if strings.HasPrefix(p.Path, deepProjectPath) {
 			t.Errorf("Found project beyond max depth: %s", p.Path)
 		}
 	}
