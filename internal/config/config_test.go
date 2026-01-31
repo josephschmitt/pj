@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,7 @@ import (
 
 func TestDefaults(t *testing.T) {
 	cfg := defaults()
+	cfg.processMarkers() // Process RawMarkers to populate Markers and Icons
 
 	// Verify default values
 	if cfg == nil {
@@ -34,7 +36,7 @@ func TestDefaults(t *testing.T) {
 		}
 	}
 
-	// Check markers
+	// Check RawMarkers (new format)
 	expectedMarkers := []string{
 		".git",
 		"go.mod",
@@ -49,6 +51,16 @@ func TestDefaults(t *testing.T) {
 		".project",
 		".zed",
 	}
+	if len(cfg.RawMarkers) != len(expectedMarkers) {
+		t.Errorf("RawMarkers length = %d, want %d", len(cfg.RawMarkers), len(expectedMarkers))
+	}
+	for i, expected := range expectedMarkers {
+		if cfg.RawMarkers[i].Marker != expected {
+			t.Errorf("RawMarkers[%d].Marker = %q, want %q", i, cfg.RawMarkers[i].Marker, expected)
+		}
+	}
+
+	// Check that Markers slice is populated after processMarkers
 	if len(cfg.Markers) != len(expectedMarkers) {
 		t.Errorf("Markers length = %d, want %d", len(cfg.Markers), len(expectedMarkers))
 	}
@@ -73,9 +85,13 @@ func TestDefaults(t *testing.T) {
 		t.Error("Nested should default to true")
 	}
 
-	// Check icons map
+	// Check icons map is populated from RawMarkers
 	if len(cfg.Icons) == 0 {
-		t.Error("defaults() should have icons")
+		t.Error("defaults() should have icons after processMarkers")
+	}
+	// Verify specific icon exists
+	if _, ok := cfg.Icons[".git"]; !ok {
+		t.Error("Icons should include .git icon")
 	}
 }
 
@@ -425,6 +441,360 @@ func TestMergeFlags(t *testing.T) {
 
 		if !cfg.Nested {
 			t.Error("Nested should remain true when NoNested flag is false")
+		}
+	})
+}
+
+func TestMarkerConfigFormats(t *testing.T) {
+	t.Run("new format with marker and icon", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    icon: ""
+  - marker: go.mod
+    icon: "󰟓"
+  - marker: package.json
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Check that markers merge with defaults (12 defaults, these 3 overlap)
+		if len(cfg.Markers) != 12 {
+			t.Errorf("Markers length = %d, want 12 (merged with defaults)", len(cfg.Markers))
+		}
+
+		// Check icons are populated from new format (overriding defaults)
+		if cfg.Icons[".git"] != "" {
+			t.Errorf("Icons[.git] = %q, want %q", cfg.Icons[".git"], "")
+		}
+		if cfg.Icons["go.mod"] != "󰟓" {
+			t.Errorf("Icons[go.mod] = %q, want %q", cfg.Icons["go.mod"], "󰟓")
+		}
+		// package.json has no icon in new format, but should get default icon
+		if cfg.Icons["package.json"] != "\U000f0399" {
+			t.Errorf("Icons[package.json] = %q, want default icon %q", cfg.Icons["package.json"], "\U000f0399")
+		}
+	})
+
+	t.Run("old format with separate markers and icons", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - .git
+  - go.mod
+  - package.json
+icons:
+  .git: ""
+  go.mod: "󰟓"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Check that markers merge with defaults
+		if len(cfg.Markers) != 12 {
+			t.Errorf("Markers length = %d, want 12 (merged with defaults)", len(cfg.Markers))
+		}
+
+		// Check icons from old format
+		if cfg.Icons[".git"] != "" {
+			t.Errorf("Icons[.git] = %q, want %q", cfg.Icons[".git"], "")
+		}
+		if cfg.Icons["go.mod"] != "󰟓" {
+			t.Errorf("Icons[go.mod] = %q, want %q", cfg.Icons["go.mod"], "󰟓")
+		}
+	})
+
+	t.Run("mixed format - new format wins", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    icon: "NEW_ICON"
+  - marker: go.mod
+icons:
+  .git: "OLD_ICON"
+  go.mod: "OLD_GO_ICON"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// New format should win for .git
+		if cfg.Icons[".git"] != "NEW_ICON" {
+			t.Errorf("Icons[.git] = %q, want %q (new format should win)", cfg.Icons[".git"], "NEW_ICON")
+		}
+
+		// Old format should be used for go.mod (no icon in new format)
+		if cfg.Icons["go.mod"] != "OLD_GO_ICON" {
+			t.Errorf("Icons[go.mod] = %q, want %q", cfg.Icons["go.mod"], "OLD_GO_ICON")
+		}
+	})
+
+	t.Run("mixed list with strings and objects", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - .git
+  - marker: go.mod
+    icon: "󰟓"
+  - package.json
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Check that markers merge with defaults
+		if len(cfg.Markers) != 12 {
+			t.Errorf("Markers length = %d, want 12 (merged with defaults)", len(cfg.Markers))
+		}
+
+		// go.mod should have the custom icon from config
+		if cfg.Icons["go.mod"] != "󰟓" {
+			t.Errorf("Icons[go.mod] = %q, want %q", cfg.Icons["go.mod"], "󰟓")
+		}
+	})
+
+	t.Run("invalid marker config without marker field", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - icon: ""
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := Load(configPath)
+		if err == nil {
+			t.Error("Load() should return error for marker config without 'marker' field")
+		}
+	})
+
+	t.Run("default icons preserved for markers not in config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		// User config only specifies one marker with a custom icon
+		yamlContent := `markers:
+  - marker: .git
+    icon: "custom-git"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Custom icon should be used for .git
+		if cfg.Icons[".git"] != "custom-git" {
+			t.Errorf("Icons[.git] = %q, want %q", cfg.Icons[".git"], "custom-git")
+		}
+
+		// Default icons should be preserved for other markers
+		if cfg.Icons["go.mod"] != "\U000f07d3" {
+			t.Errorf("Icons[go.mod] = %q, want default icon %q", cfg.Icons["go.mod"], "\U000f07d3")
+		}
+		if cfg.Icons["package.json"] != "\U000f0399" {
+			t.Errorf("Icons[package.json] = %q, want default icon %q", cfg.Icons["package.json"], "\U000f0399")
+		}
+	})
+
+	t.Run("old format icons merge with defaults", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		// User config uses old format with custom icon for one marker
+		yamlContent := `markers:
+  - .git
+icons:
+  .git: "custom-git"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Custom icon should be used for .git
+		if cfg.Icons[".git"] != "custom-git" {
+			t.Errorf("Icons[.git] = %q, want %q", cfg.Icons[".git"], "custom-git")
+		}
+
+		// Default icons should be preserved for other markers
+		if cfg.Icons["go.mod"] != "\U000f07d3" {
+			t.Errorf("Icons[go.mod] = %q, want default icon %q", cfg.Icons["go.mod"], "\U000f07d3")
+		}
+	})
+}
+
+func TestLoadWithVerbose(t *testing.T) {
+	t.Run("deprecation warning for old icons field", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - .git
+icons:
+  .git: "old-icon"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Capture stderr
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		_, err := LoadWithVerbose(configPath, true)
+		if err != nil {
+			t.Fatalf("LoadWithVerbose() error = %v", err)
+		}
+
+		w.Close()
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		os.Stderr = oldStderr
+
+		output := buf.String()
+		if !bytes.Contains([]byte(output), []byte("deprecated")) {
+			t.Errorf("Expected deprecation warning, got: %q", output)
+		}
+	})
+
+	t.Run("conflict warning when both formats have icons", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    icon: "new-icon"
+icons:
+  .git: "old-icon"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Capture stderr
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		_, err := LoadWithVerbose(configPath, true)
+		if err != nil {
+			t.Fatalf("LoadWithVerbose() error = %v", err)
+		}
+
+		w.Close()
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		os.Stderr = oldStderr
+
+		output := buf.String()
+		if !bytes.Contains([]byte(output), []byte("precedence")) {
+			t.Errorf("Expected conflict warning about precedence, got: %q", output)
+		}
+	})
+
+	t.Run("no warning when verbose is false", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - .git
+icons:
+  .git: "old-icon"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Capture stderr
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		_, err := LoadWithVerbose(configPath, false)
+		if err != nil {
+			t.Fatalf("LoadWithVerbose() error = %v", err)
+		}
+
+		w.Close()
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		os.Stderr = oldStderr
+
+		output := buf.String()
+		if len(output) > 0 {
+			t.Errorf("Expected no output when verbose is false, got: %q", output)
+		}
+	})
+
+	t.Run("no warning when using new format only", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    icon: "new-icon"
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Capture stderr
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		_, err := LoadWithVerbose(configPath, true)
+		if err != nil {
+			t.Fatalf("LoadWithVerbose() error = %v", err)
+		}
+
+		w.Close()
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		os.Stderr = oldStderr
+
+		output := buf.String()
+		if len(output) > 0 {
+			t.Errorf("Expected no warning when using new format only, got: %q", output)
 		}
 	})
 }
