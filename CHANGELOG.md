@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/josephschmitt/pj/compare/v1.4.0...v1.5.0) (2026-01-31)
+
+
+### Features
+
+* add new markers config format with inline icons ([#14](https://github.com/josephschmitt/pj/issues/14)) ([9f6dd2a](https://github.com/josephschmitt/pj/commit/9f6dd2ab9638a2321c6d7363270fc39ebe2585f7))
+
 ## [1.4.0](https://github.com/josephschmitt/pj/compare/v1.3.0...v1.4.0) (2026-01-24)
 
 
