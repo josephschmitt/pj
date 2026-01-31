@@ -67,52 +67,54 @@ scoop install pj
 
 Download packages from the [releases page](https://github.com/josephschmitt/pj/releases). Available for both `amd64` and `arm64` architectures.
 
+<!-- x-release-please-start-version -->
+
 #### Debian/Ubuntu (.deb)
 
 ```bash
 # amd64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.deb
-sudo dpkg -i pj_0.1.0_linux_amd64.deb
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_amd64.deb
+sudo dpkg -i pj_1.4.0_linux_amd64.deb
 
 # arm64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.deb
-sudo dpkg -i pj_0.1.0_linux_arm64.deb
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_arm64.deb
+sudo dpkg -i pj_1.4.0_linux_arm64.deb
 ```
 
 #### Fedora/RHEL/CentOS (.rpm)
 
 ```bash
 # amd64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.rpm
-sudo rpm -i pj_0.1.0_linux_amd64.rpm
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_amd64.rpm
+sudo rpm -i pj_1.4.0_linux_amd64.rpm
 
 # arm64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.rpm
-sudo rpm -i pj_0.1.0_linux_arm64.rpm
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_arm64.rpm
+sudo rpm -i pj_1.4.0_linux_arm64.rpm
 ```
 
 #### Alpine (.apk)
 
 ```bash
 # amd64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.apk
-apk add --allow-untrusted pj_0.1.0_linux_amd64.apk
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_amd64.apk
+apk add --allow-untrusted pj_1.4.0_linux_amd64.apk
 
 # arm64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.apk
-apk add --allow-untrusted pj_0.1.0_linux_arm64.apk
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_arm64.apk
+apk add --allow-untrusted pj_1.4.0_linux_arm64.apk
 ```
 
 #### Arch Linux (.pkg.tar.zst)
 
 ```bash
 # amd64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_amd64.pkg.tar.zst
-sudo pacman -U pj_0.1.0_linux_amd64.pkg.tar.zst
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_amd64.pkg.tar.zst
+sudo pacman -U pj_1.4.0_linux_amd64.pkg.tar.zst
 
 # arm64
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_linux_arm64.pkg.tar.zst
-sudo pacman -U pj_0.1.0_linux_arm64.pkg.tar.zst
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_linux_arm64.pkg.tar.zst
+sudo pacman -U pj_1.4.0_linux_arm64.pkg.tar.zst
 ```
 
 ### Pre-built Binaries (All Platforms)
@@ -126,10 +128,12 @@ Available platforms:
 
 ```bash
 # Example: macOS Apple Silicon
-wget https://github.com/josephschmitt/pj/releases/download/v0.1.0/pj_0.1.0_darwin_arm64.tar.gz
-tar -xzf pj_0.1.0_darwin_arm64.tar.gz
+wget https://github.com/josephschmitt/pj/releases/download/v1.4.0/pj_1.4.0_darwin_arm64.tar.gz
+tar -xzf pj_1.4.0_darwin_arm64.tar.gz
 sudo mv pj /usr/local/bin/
 ```
+
+<!-- x-release-please-end -->
 
 ### From Source
 
