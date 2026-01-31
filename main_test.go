@@ -56,6 +56,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		t.Fatal(err)
 	}
 	configPath := filepath.Join(configDir, "config.yaml")
+	// Use old format with icons field for backward compatibility
 	emptyConfig := `search_paths: []
 markers:
   - .git
@@ -75,6 +76,14 @@ excludes:
   - dist
   - build
 cache_ttl: 300
+icons:
+  .git: "\ue65d"
+  go.mod: "\U000f07d3"
+  package.json: "\U000f0399"
+  Cargo.toml: "\ue68b"
+  pyproject.toml: "\ue606"
+  Makefile: "\ue673"
+  flake.nix: "\ue843"
 `
 	if err := os.WriteFile(configPath, []byte(emptyConfig), 0644); err != nil {
 		t.Fatal(err)
