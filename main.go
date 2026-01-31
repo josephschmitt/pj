@@ -80,7 +80,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	cfg, err := config.Load(cli.Config)
+	cfg, err := config.LoadWithVerbose(cli.Config, cli.Verbose)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		os.Exit(1)
@@ -104,7 +104,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Config: %+v\n", cfg)
 	}
 
-	iconMapper := icons.NewMapper(cfg.Icons)
+	iconMapper := icons.NewMapper(cfg.GetIcons())
 	if len(cli.IconMap) > 0 {
 		for _, mapping := range cli.IconMap {
 			parts := strings.SplitN(mapping, ":", 2)
