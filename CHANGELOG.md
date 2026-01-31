@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/josephschmitt/pj/compare/v1.4.0...v1.4.1) (2026-01-31)
+
+
+### Bug Fixes
+
+* update README download URLs to v1.4.0 and automate future updates ([#15](https://github.com/josephschmitt/pj/issues/15)) ([bf723e0](https://github.com/josephschmitt/pj/commit/bf723e0eaa4c1d8359ea8f6cb6fd7f486f267017))
+
 ## [1.4.0](https://github.com/josephschmitt/pj/compare/v1.3.0...v1.4.0) (2026-01-24)
 
 
