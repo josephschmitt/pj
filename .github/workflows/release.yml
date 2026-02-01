@@ -36,3 +36,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
           SCOOP_BUCKET_GITHUB_TOKEN: ${{ secrets.SCOOP_BUCKET_GITHUB_TOKEN }}
+
+      - name: Check if major/minor release
+        id: version-check
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PATCH="${VERSION##*.}"
+          if [ "$PATCH" = "0" ]; then
+            echo "is_minor_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_minor_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify pj-node of new release
+        if: success() && steps.version-check.outputs.is_minor_release == 'true'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PJ_NODE_PAT }}
+          repository: josephschmitt/pj-node
+          event-type: pj-release
+          client-payload: '{"version": "${{ github.ref_name }}"}'
