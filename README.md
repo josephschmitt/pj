@@ -334,11 +334,15 @@ CLI flags override config file settings, which override defaults.
 pj -d 5
 ```
 
-## Integration with Fuzzy Finders
+## Integrations
 
-The real power of `pj` comes from integrating it with fuzzy finders like `fzf` or `television` for quick project navigation.
+The real power of `pj` comes from integrating it with other tools for quick project navigation.
 
-### Shell Function (Bash/Zsh)
+### Neovim
+
+[pj.nvim](https://github.com/josephschmitt/pj.nvim) provides native Neovim integration with support for multiple pickers including Snacks, Telescope, fzf-lua, Television, and mini.pick. Features include automatic binary installation, session manager integration, and consistent keybindings across all picker implementations.
+
+### Shell (Bash/Zsh)
 
 Add to your `~/.bashrc` or `~/.zshrc`:
 
@@ -418,9 +422,6 @@ pjt() {
 }
 ```
 
-### Vim/Neovim Integration
-
-Use with telescope or fzf.vim to quickly open projects in your editor.
 
 ## How It Works
 
@@ -449,8 +450,6 @@ Joseph Schmitt ([@josephschmitt](https://github.com/josephschmitt))
 
 ## Related Projects
 
-- [fzf](https://github.com/junegunn/fzf) - Command-line fuzzy finder
-- [television](https://github.com/alexpasmantier/television) - Blazingly fast fuzzy finder TUI
 - [gah](https://github.com/get-gah/gah) - GitHub Asset Helper for installing binaries
 - [z](https://github.com/rupa/z) - Jump around directories
 - [autojump](https://github.com/wting/autojump) - Fast way to navigate filesystem
