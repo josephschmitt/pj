@@ -799,6 +799,129 @@ func TestDiscoverIDEMarkers(t *testing.T) {
 	}
 }
 
+func TestDiscoverDockerfile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create project with only Dockerfile
+	createProject(t, tmpDir, "docker-only", "Dockerfile")
+
+	// Create project with Dockerfile and generic marker (Dockerfile should win - priority 7 > 1)
+	createProject(t, tmpDir, "docker-with-git", "Dockerfile", ".git/")
+
+	// Create project with Dockerfile and language marker (language should win - priority 10 > 7)
+	createProject(t, tmpDir, "docker-with-gomod", "Dockerfile", "go.mod")
+
+	// Create project with Dockerfile and IDE marker (Dockerfile should win - priority 7 > 5)
+	createProject(t, tmpDir, "docker-with-vscode", "Dockerfile", ".vscode/")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{"Dockerfile", ".git", "go.mod", ".vscode"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 4 {
+		t.Fatalf("Discover() found %d projects, want 4", len(projects))
+	}
+
+	for _, p := range projects {
+		switch filepath.Base(p.Path) {
+		case "docker-only":
+			if p.Marker != "Dockerfile" {
+				t.Errorf("docker-only marker = %q, want Dockerfile", p.Marker)
+			}
+		case "docker-with-git":
+			if p.Marker != "Dockerfile" {
+				t.Errorf("docker-with-git marker = %q, want Dockerfile (priority 7 > 1)", p.Marker)
+			}
+		case "docker-with-gomod":
+			if p.Marker != "go.mod" {
+				t.Errorf("docker-with-gomod marker = %q, want go.mod (priority 10 > 7)", p.Marker)
+			}
+		case "docker-with-vscode":
+			if p.Marker != "Dockerfile" {
+				t.Errorf("docker-with-vscode marker = %q, want Dockerfile (priority 7 > 5)", p.Marker)
+			}
+		}
+	}
+}
+
+func TestDiscoverCustomPriority(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create project with .git and go.mod
+	// Normally go.mod (10) wins over .git (1)
+	// But with custom priority, we can make .git win
+	createProject(t, tmpDir, "custom-priority", ".git/", "go.mod")
+
+	// Test with default priorities - go.mod should win
+	t.Run("default priorities", func(t *testing.T) {
+		cfg := &config.Config{
+			SearchPaths: []string{tmpDir},
+			Markers:     []string{".git", "go.mod"},
+			MaxDepth:    3,
+			Excludes:    []string{},
+			Priorities: map[string]int{
+				".git":   1,
+				"go.mod": 10,
+			},
+		}
+
+		d := New(cfg, false)
+		projects, err := d.Discover()
+		if err != nil {
+			t.Fatalf("Discover() error = %v", err)
+		}
+
+		if len(projects) != 1 {
+			t.Fatalf("Discover() found %d projects, want 1", len(projects))
+		}
+
+		if projects[0].Marker != "go.mod" {
+			t.Errorf("marker = %q, want go.mod (higher default priority)", projects[0].Marker)
+		}
+	})
+
+	// Test with custom priorities - .git should win with higher priority
+	t.Run("custom priority overrides default", func(t *testing.T) {
+		cfg := &config.Config{
+			SearchPaths: []string{tmpDir},
+			Markers:     []string{".git", "go.mod"},
+			MaxDepth:    3,
+			Excludes:    []string{},
+			Priorities: map[string]int{
+				".git":   100, // Override to higher priority
+				"go.mod": 10,
+			},
+		}
+
+		d := New(cfg, false)
+		projects, err := d.Discover()
+		if err != nil {
+			t.Fatalf("Discover() error = %v", err)
+		}
+
+		if len(projects) != 1 {
+			t.Fatalf("Discover() found %d projects, want 1", len(projects))
+		}
+
+		if projects[0].Marker != ".git" {
+			t.Errorf("marker = %q, want .git (custom higher priority)", projects[0].Marker)
+		}
+
+		if projects[0].Priority != 100 {
+			t.Errorf("priority = %d, want 100", projects[0].Priority)
+		}
+	})
+}
+
 func TestDiscoverNested(t *testing.T) {
 	tmpDir := t.TempDir()
 

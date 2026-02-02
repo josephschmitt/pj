@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
+  "packages": [
+    "go@1.23",
+    "gopls@latest",
+    "golangci-lint@latest",
+    "gnumake@latest",
+    "git@latest",
+    "lefthook@latest"
+  ],
+  "env": {
+    "CGO_ENABLED": "0"
+  },
+  "shell": {
+    "init_hook": [
+      "echo 'pj development environment'",
+      "echo \"Go version: $(go version)\"",
+      "lefthook install"
+    ],
+    "scripts": {
+      "build": "make build",
+      "test": "make test",
+      "lint": "make lint"
+    }
+  }
+}

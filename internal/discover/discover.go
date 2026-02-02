@@ -50,6 +50,7 @@ var markerSpecificity = map[string]int{
 	".fleet":         5,
 	".project":       5,
 	".zed":           5,
+	"Dockerfile":     7,
 }
 
 // Discover finds all project directories
@@ -161,9 +162,13 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 		for _, marker := range d.config.Markers {
 			markerPath := filepath.Join(path, marker)
 			if _, err := os.Stat(markerPath); err == nil {
-				priority := markerSpecificity[marker]
+				// Check config priorities first, then hardcoded defaults
+				priority := d.config.Priorities[marker]
 				if priority == 0 {
-					priority = 1 // Default priority for unmarked markers
+					priority = markerSpecificity[marker]
+				}
+				if priority == 0 {
+					priority = 1 // Default priority for unknown markers
 				}
 
 				if priority > bestPriority {

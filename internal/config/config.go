@@ -9,11 +9,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// MarkerConfig represents a single marker with optional icon (new format)
+// MarkerConfig represents a single marker with optional icon and priority (new format)
 type MarkerConfig struct {
-	Marker  string `yaml:"marker"`
-	Icon    string `yaml:"icon,omitempty"`
-	HasIcon bool   `yaml:"-"` // True if icon field was explicitly set in config
+	Marker      string `yaml:"marker"`
+	Icon        string `yaml:"icon,omitempty"`
+	Priority    int    `yaml:"priority,omitempty"`
+	HasIcon     bool   `yaml:"-"` // True if icon field was explicitly set in config
+	HasPriority bool   `yaml:"-"` // True if priority field was explicitly set in config
 }
 
 // MarkerList handles unmarshaling both old format ([]string) and new format ([]MarkerConfig)
@@ -42,11 +44,13 @@ func (m *MarkerList) UnmarshalYAML(value *yaml.Node) error {
 			if mc.Marker == "" {
 				return fmt.Errorf("marker config must have a 'marker' field")
 			}
-			// Check if icon field was explicitly present
+			// Check if icon/priority fields were explicitly present
 			for i := 0; i < len(item.Content); i += 2 {
-				if item.Content[i].Value == "icon" {
+				switch item.Content[i].Value {
+				case "icon":
 					mc.HasIcon = true
-					break
+				case "priority":
+					mc.HasPriority = true
 				}
 			}
 			*m = append(*m, mc)
@@ -72,6 +76,9 @@ type Config struct {
 	// This field is kept for backward compatibility.
 	Icons map[string]string `yaml:"icons,omitempty"`
 
+	// Priorities maps marker names to their priority values (derived from RawMarkers)
+	Priorities map[string]int `yaml:"-"`
+
 	// Internal flags for detecting format conflicts
 	hasNewFormatIcons bool
 	hasOldFormatIcons bool
@@ -81,6 +88,15 @@ type Config struct {
 // This is the preferred way to access icons programmatically.
 func (c *Config) GetIcons() map[string]string {
 	return c.Icons
+}
+
+// GetPriorities returns a copy of the priorities map for use by the application.
+func (c *Config) GetPriorities() map[string]int {
+	m := make(map[string]int)
+	for k, v := range c.Priorities {
+		m[k] = v
+	}
+	return m
 }
 
 // CLI interface for merging flags
@@ -99,10 +115,11 @@ func Load(configPath string) (*Config, error) {
 // LoadWithVerbose loads configuration and optionally emits deprecation warnings
 func LoadWithVerbose(configPath string, verbose bool) (*Config, error) {
 	cfg := defaults()
-	cfg.processMarkers() // Build default icons from RawMarkers
+	cfg.processMarkers() // Build default icons and priorities from RawMarkers
 
 	// Save defaults before YAML unmarshaling overwrites them
 	defaultIcons := cfg.Icons
+	defaultPriorities := cfg.Priorities
 	defaultRawMarkers := cfg.RawMarkers
 
 	if configPath == "" {
@@ -138,13 +155,13 @@ func LoadWithVerbose(configPath string, verbose bool) (*Config, error) {
 	yamlHadMarkers := cfg.RawMarkers != nil
 	cfg.RawMarkers = mergeMarkers(defaultRawMarkers, cfg.RawMarkers)
 
-	cfg.processMarkersWithDefaults(defaultIcons, yamlHadMarkers)
+	cfg.processMarkersWithDefaults(defaultIcons, defaultPriorities, yamlHadMarkers)
 	cfg.emitDeprecationWarnings(verbose)
 
 	return cfg, nil
 }
 
-// processMarkers builds the Markers slice and Icons map from RawMarkers
+// processMarkers builds the Markers slice, Icons map, and Priorities map from RawMarkers
 // Used for processing defaults (doesn't set deprecation flags)
 func (c *Config) processMarkers() {
 	c.Markers = make([]string, len(c.RawMarkers))
@@ -158,23 +175,38 @@ func (c *Config) processMarkers() {
 			c.Icons[mc.Marker] = mc.Icon
 		}
 	}
+	// Build priorities from RawMarkers for defaults
+	c.Priorities = make(map[string]int)
+	for _, mc := range c.RawMarkers {
+		if mc.HasPriority {
+			c.Priorities[mc.Marker] = mc.Priority
+		}
+	}
 }
 
-// processMarkersWithDefaults builds Markers/Icons, merging with default icons
+// processMarkersWithDefaults builds Markers/Icons/Priorities, merging with defaults
 // yamlHadMarkers indicates whether the YAML config had a markers field
-func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, yamlHadMarkers bool) {
+func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defaultPriorities map[string]int, yamlHadMarkers bool) {
 	c.Markers = make([]string, len(c.RawMarkers))
 	newIcons := make(map[string]string)
-	// Track markers that explicitly set icons (even to empty string)
+	newPriorities := make(map[string]int)
+	// Track markers that explicitly set icons/priorities (even to empty/zero)
 	explicitIcons := make(map[string]bool)
+	explicitPriorities := make(map[string]bool)
 
 	for i, mc := range c.RawMarkers {
 		c.Markers[i] = mc.Marker
-		// Only consider this a "new format icon" if YAML actually had a markers field
-		if mc.HasIcon && yamlHadMarkers {
-			newIcons[mc.Marker] = mc.Icon
-			explicitIcons[mc.Marker] = true
-			c.hasNewFormatIcons = true
+		// Only consider this a "new format" if YAML actually had a markers field
+		if yamlHadMarkers {
+			if mc.HasIcon {
+				newIcons[mc.Marker] = mc.Icon
+				explicitIcons[mc.Marker] = true
+				c.hasNewFormatIcons = true
+			}
+			if mc.HasPriority {
+				newPriorities[mc.Marker] = mc.Priority
+				explicitPriorities[mc.Marker] = true
+			}
 		}
 	}
 
@@ -198,6 +230,18 @@ func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, yaml
 		finalIcons[k] = v
 	}
 	c.Icons = finalIcons
+
+	// Merge priorities: defaults -> new format (later wins)
+	finalPriorities := make(map[string]int)
+	for k, v := range defaultPriorities {
+		if !explicitPriorities[k] {
+			finalPriorities[k] = v
+		}
+	}
+	for k, v := range newPriorities {
+		finalPriorities[k] = v
+	}
+	c.Priorities = finalPriorities
 }
 
 // mergeMarkers combines default markers with YAML markers
@@ -320,18 +364,19 @@ func defaults() *Config {
 			filepath.Join(home, "development"),
 		},
 		RawMarkers: MarkerList{
-			{Marker: ".git", Icon: "\ue65d", HasIcon: true},
-			{Marker: "go.mod", Icon: "\U000f07d3", HasIcon: true},
-			{Marker: "package.json", Icon: "\U000f0399", HasIcon: true},
-			{Marker: "Cargo.toml", Icon: "\ue68b", HasIcon: true},
-			{Marker: "pyproject.toml", Icon: "\ue606", HasIcon: true},
-			{Marker: "Makefile", Icon: "\ue673", HasIcon: true},
-			{Marker: "flake.nix", Icon: "\ue843", HasIcon: true},
-			{Marker: ".vscode", Icon: "\U000f0a1e", HasIcon: true},
-			{Marker: ".idea", Icon: "\ue7b5", HasIcon: true},
-			{Marker: ".fleet"},
-			{Marker: ".project", Icon: "\ue79e", HasIcon: true},
-			{Marker: ".zed"},
+			{Marker: ".git", Icon: "\ue65d", HasIcon: true, Priority: 1, HasPriority: true},
+			{Marker: "go.mod", Icon: "\U000f07d3", HasIcon: true, Priority: 10, HasPriority: true},
+			{Marker: "package.json", Icon: "\U000f0399", HasIcon: true, Priority: 10, HasPriority: true},
+			{Marker: "Cargo.toml", Icon: "\ue68b", HasIcon: true, Priority: 10, HasPriority: true},
+			{Marker: "pyproject.toml", Icon: "\ue606", HasIcon: true, Priority: 10, HasPriority: true},
+			{Marker: "Makefile", Icon: "\ue673", HasIcon: true, Priority: 1, HasPriority: true},
+			{Marker: "flake.nix", Icon: "\ue843", HasIcon: true, Priority: 10, HasPriority: true},
+			{Marker: ".vscode", Icon: "\U000f0a1e", HasIcon: true, Priority: 5, HasPriority: true},
+			{Marker: ".idea", Icon: "\ue7b5", HasIcon: true, Priority: 5, HasPriority: true},
+			{Marker: ".fleet", Priority: 5, HasPriority: true},
+			{Marker: ".project", Icon: "\ue79e", HasIcon: true, Priority: 5, HasPriority: true},
+			{Marker: ".zed", Priority: 5, HasPriority: true},
+			{Marker: "Dockerfile", Icon: "\ue7b0", HasIcon: true, Priority: 7, HasPriority: true},
 		},
 		MaxDepth: 3,
 		Excludes: []string{
