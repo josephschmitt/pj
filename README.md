@@ -20,6 +20,15 @@
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 - **Fuzzy Finder Integration**: Perfect for fuzzy finding and quick navigation with `fzf`, `television`, or your favorite fuzzy finder
 
+## The PJ Cinematic Universe
+
+The `pj` command was designed to be flexible and portable, meaning you can bring the power of `pj` to a number of projects and use cases:
+
+- **[`pj.nvim`](https://github.com/josephschmitt/pj.nvim)**: Neovim integration with `pj` as a project picker. Supports all the major pickers, including Snacks, Telescope, mini.pick, fzf-lua, and Television.
+- **[`pj-node`](https://github.com/josephschmitt/pj-noe)**: NodeJS wrapper around `pj` binary, providing a node-based installation method as well as a TypeScript-native API.
+
+Have a project that integrates `pj`? Let me know and I'll add it to the list!
+
 ## Installation
 
 ### Homebrew (macOS/Linux)
