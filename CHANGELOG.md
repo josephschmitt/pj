@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/josephschmitt/pj/compare/v1.4.1...v1.5.0) (2026-02-02)
+
+
+### Features
+
+* add new markers config format with inline icons ([#18](https://github.com/josephschmitt/pj/issues/18)) ([0fa8678](https://github.com/josephschmitt/pj/commit/0fa86786776cf82a3aac5621e85236e213d05988))
+* notify pj-node on major/minor releases for npm sync ([c83002b](https://github.com/josephschmitt/pj/commit/c83002b0b98801754e14dfd16df293b69bf9d105))
+
 ## [1.4.1](https://github.com/josephschmitt/pj/compare/v1.4.0...v1.4.1) (2026-01-31)
 
 
