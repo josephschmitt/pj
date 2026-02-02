@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/josephschmitt/pj/compare/v1.5.0...v1.6.0) (2026-02-02)
+
+
+### Features
+
+* add Dockerfile marker, configurable priority, and dev tooling ([#20](https://github.com/josephschmitt/pj/issues/20)) ([12c8858](https://github.com/josephschmitt/pj/commit/12c8858d3b9c1060881f46fab6d78610ed91a655))
+
 ## [1.5.0](https://github.com/josephschmitt/pj/compare/v1.4.1...v1.5.0) (2026-02-02)
 
 
