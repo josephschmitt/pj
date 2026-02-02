@@ -332,6 +332,7 @@ func defaults() *Config {
 			{Marker: ".fleet"},
 			{Marker: ".project", Icon: "\ue79e", HasIcon: true},
 			{Marker: ".zed"},
+			{Marker: "Dockerfile", Icon: "\ue7b0", HasIcon: true},
 		},
 		MaxDepth: 3,
 		Excludes: []string{

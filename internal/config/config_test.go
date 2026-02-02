@@ -50,6 +50,7 @@ func TestDefaults(t *testing.T) {
 		".fleet",
 		".project",
 		".zed",
+		"Dockerfile",
 	}
 	if len(cfg.RawMarkers) != len(expectedMarkers) {
 		t.Errorf("RawMarkers length = %d, want %d", len(cfg.RawMarkers), len(expectedMarkers))
@@ -466,9 +467,9 @@ func TestMarkerConfigFormats(t *testing.T) {
 			t.Fatalf("Load() error = %v", err)
 		}
 
-		// Check that markers merge with defaults (12 defaults, these 3 overlap)
-		if len(cfg.Markers) != 12 {
-			t.Errorf("Markers length = %d, want 12 (merged with defaults)", len(cfg.Markers))
+		// Check that markers merge with defaults (13 defaults, these 3 overlap)
+		if len(cfg.Markers) != 13 {
+			t.Errorf("Markers length = %d, want 13 (merged with defaults)", len(cfg.Markers))
 		}
 
 		// Check icons are populated from new format (overriding defaults)
@@ -506,8 +507,8 @@ icons:
 		}
 
 		// Check that markers merge with defaults
-		if len(cfg.Markers) != 12 {
-			t.Errorf("Markers length = %d, want 12 (merged with defaults)", len(cfg.Markers))
+		if len(cfg.Markers) != 13 {
+			t.Errorf("Markers length = %d, want 13 (merged with defaults)", len(cfg.Markers))
 		}
 
 		// Check icons from old format
@@ -571,8 +572,8 @@ icons:
 		}
 
 		// Check that markers merge with defaults
-		if len(cfg.Markers) != 12 {
-			t.Errorf("Markers length = %d, want 12 (merged with defaults)", len(cfg.Markers))
+		if len(cfg.Markers) != 13 {
+			t.Errorf("Markers length = %d, want 13 (merged with defaults)", len(cfg.Markers))
 		}
 
 		// go.mod should have the custom icon from config

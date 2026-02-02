@@ -66,6 +66,7 @@ markers:
   - pyproject.toml
   - Makefile
   - flake.nix
+  - Dockerfile
 max_depth: 3
 excludes:
   - node_modules
@@ -84,6 +85,7 @@ icons:
   pyproject.toml: "\ue606"
   Makefile: "\ue673"
   flake.nix: "\ue843"
+  Dockerfile: "\ue7b0"
 `
 	if err := os.WriteFile(configPath, []byte(emptyConfig), 0644); err != nil {
 		t.Fatal(err)

@@ -50,6 +50,7 @@ var markerSpecificity = map[string]int{
 	".fleet":         5,
 	".project":       5,
 	".zed":           5,
+	"Dockerfile":     7,
 }
 
 // Discover finds all project directories
