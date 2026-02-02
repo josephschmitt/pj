@@ -94,6 +94,32 @@ func TestDefaults(t *testing.T) {
 	if _, ok := cfg.Icons[".git"]; !ok {
 		t.Error("Icons should include .git icon")
 	}
+
+	// Check priorities map is populated from RawMarkers
+	if len(cfg.Priorities) == 0 {
+		t.Error("defaults() should have priorities after processMarkers")
+	}
+	// Verify specific priorities
+	expectedPriorities := map[string]int{
+		".git":           1,
+		"go.mod":         10,
+		"package.json":   10,
+		"Cargo.toml":     10,
+		"pyproject.toml": 10,
+		"Makefile":       1,
+		"flake.nix":      10,
+		".vscode":        5,
+		".idea":          5,
+		".fleet":         5,
+		".project":       5,
+		".zed":           5,
+		"Dockerfile":     7,
+	}
+	for marker, expectedPriority := range expectedPriorities {
+		if cfg.Priorities[marker] != expectedPriority {
+			t.Errorf("Priorities[%q] = %d, want %d", marker, cfg.Priorities[marker], expectedPriority)
+		}
+	}
 }
 
 func TestDefaultConfigPath(t *testing.T) {
@@ -796,6 +822,76 @@ icons:
 		output := buf.String()
 		if len(output) > 0 {
 			t.Errorf("Expected no warning when using new format only, got: %q", output)
+		}
+	})
+
+	t.Run("custom priority in new format", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    priority: 100
+  - marker: go.mod
+    priority: 5
+  - marker: custom-marker
+    priority: 20
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Custom priority should override default for .git
+		if cfg.Priorities[".git"] != 100 {
+			t.Errorf("Priorities[.git] = %d, want 100", cfg.Priorities[".git"])
+		}
+
+		// Custom priority should override default for go.mod
+		if cfg.Priorities["go.mod"] != 5 {
+			t.Errorf("Priorities[go.mod] = %d, want 5", cfg.Priorities["go.mod"])
+		}
+
+		// Custom marker should have custom priority
+		if cfg.Priorities["custom-marker"] != 20 {
+			t.Errorf("Priorities[custom-marker] = %d, want 20", cfg.Priorities["custom-marker"])
+		}
+
+		// Default priorities should be preserved for markers not in config
+		if cfg.Priorities["package.json"] != 10 {
+			t.Errorf("Priorities[package.json] = %d, want 10 (default)", cfg.Priorities["package.json"])
+		}
+	})
+
+	t.Run("priority without icon", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    priority: 50
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		// Priority should be set
+		if cfg.Priorities[".git"] != 50 {
+			t.Errorf("Priorities[.git] = %d, want 50", cfg.Priorities[".git"])
+		}
+
+		// Default icon should be preserved
+		if cfg.Icons[".git"] != "\ue65d" {
+			t.Errorf("Icons[.git] = %q, want default icon", cfg.Icons[".git"])
 		}
 	})
 }
