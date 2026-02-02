@@ -292,8 +292,10 @@ search_paths:
   - ~/development
   - ~/work
 
-# Files/directories that mark a project (with optional icons)
-# Each marker can be a simple string or an object with marker and icon fields
+# Files/directories that mark a project (with optional icons and priority)
+# Each marker can be a simple string or an object with marker, icon, and priority fields
+# Priority determines which marker is used when multiple exist in the same directory
+# Higher priority wins. Default priorities: language=10, infrastructure=7, IDE=5, generic=1
 markers:
   - marker: .git
     icon: ""      # \ue65d - Git icon
@@ -314,7 +316,7 @@ markers:
   - marker: .idea
     icon: ""      # \ue7b5 - IntelliJ icon
   - marker: build.gradle
-    # icon is optional - omit for no icon
+    # icon and priority are optional - omit for defaults
 
 # Maximum directory depth to search
 max_depth: 3
@@ -353,6 +355,26 @@ icons:
 ```
 
 If both formats are used, the new format takes precedence. Run with `-v` to see deprecation warnings.
+
+#### Marker Priority
+
+When a directory contains multiple markers (e.g., both `.git` and `go.mod`), the marker with the highest priority is used. This affects which icon is displayed and how projects are sorted.
+
+Default priority tiers:
+- **10** - Language-specific: `go.mod`, `package.json`, `Cargo.toml`, `pyproject.toml`, `flake.nix`
+- **7** - Infrastructure: `Dockerfile`
+- **5** - IDE markers: `.vscode`, `.idea`, `.fleet`, `.zed`, `.project`
+- **1** - Generic: `.git`, `Makefile`
+
+You can customize priority for any marker:
+
+```yaml
+markers:
+  - marker: .git
+    priority: 100  # Make .git highest priority
+  - marker: my-custom-marker
+    priority: 15   # Custom marker with custom priority
+```
 
 ### Config Priority
 
