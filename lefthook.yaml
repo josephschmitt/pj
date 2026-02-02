@@ -1,0 +1,8 @@
+pre-push:
+  commands:
+    build:
+      run: make build
+    test:
+      run: make test
+    lint:
+      run: make lint

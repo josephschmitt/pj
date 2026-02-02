@@ -38,11 +38,13 @@
             go-tools
             gnumake
             git
+            lefthook
           ];
 
           shellHook = ''
             echo "pj development environment"
             echo "Go version: $(go version)"
+            lefthook install
           '';
         };
       }
