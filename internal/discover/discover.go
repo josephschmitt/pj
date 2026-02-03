@@ -27,6 +27,7 @@ type Discoverer struct {
 
 // New creates a new Discoverer
 func New(cfg *config.Config, verbose bool) *Discoverer {
+	cfg.EnsureMarkerCategories()
 	return &Discoverer{
 		config:  cfg,
 		verbose: verbose,
@@ -157,24 +158,26 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 		}
 
 		// Check for project markers - find the highest priority marker
+		// Phase 1: Check exact markers using os.Stat (fast path)
 		var bestMarker string
 		var bestPriority int
-		for _, marker := range d.config.Markers {
+		for _, marker := range d.config.ExactMarkers {
 			markerPath := filepath.Join(path, marker)
 			if _, err := os.Stat(markerPath); err == nil {
-				// Check config priorities first, then hardcoded defaults
-				priority := d.config.Priorities[marker]
-				if priority == 0 {
-					priority = markerSpecificity[marker]
-				}
-				if priority == 0 {
-					priority = 1 // Default priority for unknown markers
-				}
-
+				priority := d.getMarkerPriority(marker)
 				if priority > bestPriority {
 					bestMarker = marker
 					bestPriority = priority
 				}
+			}
+		}
+
+		// Phase 2: Check pattern markers using directory listing (only if configured)
+		if len(d.config.PatternMarkers) > 0 {
+			patternMarker, patternPriority := d.checkPatternMarkers(path)
+			if patternPriority > bestPriority {
+				bestMarker = patternMarker
+				bestPriority = patternPriority
 			}
 		}
 
@@ -198,6 +201,47 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 	if err != nil && d.verbose {
 		fmt.Fprintf(os.Stderr, "Error walking %s: %v\n", root, err)
 	}
+}
+
+// getMarkerPriority returns the priority for a marker, checking config first, then defaults
+func (d *Discoverer) getMarkerPriority(marker string) int {
+	priority := d.config.Priorities[marker]
+	if priority == 0 {
+		priority = markerSpecificity[marker]
+	}
+	if priority == 0 {
+		priority = 1 // Default priority for unknown markers
+	}
+	return priority
+}
+
+// checkPatternMarkers checks pattern-based markers by reading directory contents once
+func (d *Discoverer) checkPatternMarkers(dir string) (string, int) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", 0
+	}
+
+	var bestMatch string
+	var bestPriority int
+
+	for _, pattern := range d.config.PatternMarkers {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue // Skip directories for file patterns
+			}
+			matched, _ := filepath.Match(pattern, entry.Name())
+			if matched {
+				priority := d.getMarkerPriority(pattern)
+				if priority > bestPriority {
+					bestMatch = entry.Name()
+					bestPriority = priority
+				}
+				break // First match per pattern wins
+			}
+		}
+	}
+	return bestMatch, bestPriority
 }
 
 // matchPattern checks if a name matches a pattern (simple glob support)
