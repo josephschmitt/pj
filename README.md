@@ -296,6 +296,7 @@ search_paths:
 # Each marker can be a simple string or an object with marker, icon, and priority fields
 # Priority determines which marker is used when multiple exist in the same directory
 # Higher priority wins. Default priorities: language=10, infrastructure=7, IDE=5, generic=1
+# Glob patterns are supported: *.csproj, *.sln, test_*.yml, etc.
 markers:
   - marker: .git
     icon: ""      # \ue65d - Git icon
@@ -317,6 +318,10 @@ markers:
     icon: ""      # \ue7b5 - IntelliJ icon
   - marker: build.gradle
     # icon and priority are optional - omit for defaults
+  - marker: "*.csproj"       # Glob patterns for variable file names
+    icon: "󰪮"
+  - marker: "*.sln"
+    icon: "󰪮"
 
 # Maximum directory depth to search
 max_depth: 3
@@ -375,6 +380,26 @@ markers:
   - marker: my-custom-marker
     priority: 15   # Custom marker with custom priority
 ```
+
+#### Glob Pattern Markers
+
+Markers support glob patterns (`*`, `?`, `[]`) for detecting projects with variable file names. This is useful for ecosystems like .NET where project files have names like `MyApp.csproj` or `Solution.sln`.
+
+```yaml
+markers:
+  - marker: "*.csproj"    # Matches any .csproj file
+    icon: "󰪮"
+    priority: 10
+  - marker: "*.sln"       # Matches any .sln file
+    icon: "󰪮"
+    priority: 12
+  - marker: "test_*.yml"  # Matches test_config.yml, test_data.yml, etc.
+  - marker: "config[0-9].json"  # Matches config1.json, config2.json, etc.
+```
+
+When a glob pattern matches, the actual matched filename is used as the marker (e.g., `MyApp.csproj` instead of `*.csproj`). If multiple files match the same pattern, the first alphabetically is used.
+
+Exact markers (like `.git`, `go.mod`) are checked first using fast `os.Stat` calls. Pattern markers are checked by reading directory contents, so they have slightly more overhead but are still efficient.
 
 ### Config Priority
 

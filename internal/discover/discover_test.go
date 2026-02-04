@@ -1141,3 +1141,272 @@ func TestDiscoverNestedWithGitignore(t *testing.T) {
 		}
 	}
 }
+
+// Test pattern marker support
+func TestDiscoverPatternMarkers(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a .NET-style project with .csproj file
+	dotnetDir := filepath.Join(tmpDir, "dotnet-app")
+	if err := os.MkdirAll(dotnetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dotnetDir, "MyApp.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a standard Go project
+	goDir := createProject(t, tmpDir, "go-app", "go.mod")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{"go.mod", "*.csproj"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (marker: %s)", p.Path, p.Marker)
+		}
+	}
+
+	foundDotnet := false
+	foundGo := false
+	for _, p := range projects {
+		if filepath.Base(p.Path) == "dotnet-app" {
+			foundDotnet = true
+			if p.Marker != "MyApp.csproj" {
+				t.Errorf("Expected marker 'MyApp.csproj', got '%s'", p.Marker)
+			}
+		}
+		if filepath.Base(p.Path) == "go-app" {
+			foundGo = true
+		}
+	}
+	if !foundDotnet {
+		t.Error("dotnet-app not found")
+	}
+	if !foundGo {
+		t.Error("go-app not found (should still work with exact markers)")
+	}
+	_ = goDir // silence unused variable warning
+}
+
+func TestDiscoverPatternMarkerPriority(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a project with both a .csproj and .sln file
+	// .sln should win if it has higher priority
+	projDir := filepath.Join(tmpDir, "multi-marker")
+	if err := os.MkdirAll(projDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projDir, "App.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projDir, "Solution.sln"), []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{"*.csproj", "*.sln"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		Priorities: map[string]int{
+			"*.csproj": 10,
+			"*.sln":    15, // Higher priority
+		},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Fatalf("Discover() found %d projects, want 1", len(projects))
+	}
+
+	// Should find the .sln file since it has higher priority
+	if projects[0].Marker != "Solution.sln" {
+		t.Errorf("Expected marker 'Solution.sln' (higher priority), got '%s'", projects[0].Marker)
+	}
+	if projects[0].Priority != 15 {
+		t.Errorf("Expected priority 15, got %d", projects[0].Priority)
+	}
+}
+
+func TestDiscoverMixedExactAndPatternMarkers(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create projects with different marker types
+	createProject(t, tmpDir, "git-only", ".git/")
+
+	dotnetDir := filepath.Join(tmpDir, "dotnet-only")
+	if err := os.MkdirAll(dotnetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dotnetDir, "App.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Project with both exact and pattern marker - exact should be checked first
+	bothDir := filepath.Join(tmpDir, "has-both")
+	if err := os.MkdirAll(filepath.Join(bothDir, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bothDir, "App.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git", "*.csproj"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		Priorities: map[string]int{
+			".git":     1,
+			"*.csproj": 10, // Higher priority than .git
+		},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 3 {
+		t.Errorf("Discover() found %d projects, want 3", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (marker: %s)", p.Path, p.Marker)
+		}
+	}
+
+	for _, p := range projects {
+		if filepath.Base(p.Path) == "has-both" {
+			// Pattern marker has higher priority, so .csproj should win
+			if p.Marker != "App.csproj" {
+				t.Errorf("Expected pattern marker 'App.csproj' (priority 10) over '.git' (priority 1), got '%s'", p.Marker)
+			}
+		}
+	}
+}
+
+func TestDiscoverMultiplePatternMatches(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a directory with multiple .csproj files
+	projDir := filepath.Join(tmpDir, "multi-csproj")
+	if err := os.MkdirAll(projDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Create multiple csproj files - first alphabetically should win
+	if err := os.WriteFile(filepath.Join(projDir, "Alpha.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projDir, "Beta.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projDir, "Zeta.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{"*.csproj"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Fatalf("Discover() found %d projects, want 1 (directory should only appear once)", len(projects))
+	}
+
+	// First match (alphabetically from ReadDir) wins
+	if projects[0].Marker != "Alpha.csproj" {
+		t.Errorf("Expected first alphabetical match 'Alpha.csproj', got '%s'", projects[0].Marker)
+	}
+}
+
+func TestIsPatternMarker(t *testing.T) {
+	tests := []struct {
+		marker   string
+		expected bool
+	}{
+		{".git", false},
+		{"go.mod", false},
+		{"package.json", false},
+		{"*.csproj", true},
+		{"*.sln", true},
+		{"test_*.yml", true},
+		{"file?.txt", true},
+		{"[abc].txt", true},
+		{"normal-file", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.marker, func(t *testing.T) {
+			got := config.IsPatternMarker(tt.marker)
+			if got != tt.expected {
+				t.Errorf("IsPatternMarker(%q) = %v, want %v", tt.marker, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestDiscoverPatternMarkerSkipsDirectories(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a directory that matches the pattern (should be skipped)
+	projDir := filepath.Join(tmpDir, "test-proj")
+	if err := os.MkdirAll(projDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Create a directory named "Something.csproj" (unusual but possible)
+	if err := os.MkdirAll(filepath.Join(projDir, "Dir.csproj"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Create a file that matches
+	if err := os.WriteFile(filepath.Join(projDir, "App.csproj"), []byte("<Project></Project>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{"*.csproj"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Fatalf("Discover() found %d projects, want 1", len(projects))
+	}
+
+	// Should find the file, not the directory
+	if projects[0].Marker != "App.csproj" {
+		t.Errorf("Expected file marker 'App.csproj', got '%s'", projects[0].Marker)
+	}
+}

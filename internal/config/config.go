@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -79,6 +80,11 @@ type Config struct {
 	// Priorities maps marker names to their priority values (derived from RawMarkers)
 	Priorities map[string]int `yaml:"-"`
 
+	// ExactMarkers contains markers without glob patterns (checked via os.Stat)
+	ExactMarkers []string `yaml:"-"`
+	// PatternMarkers contains markers with glob patterns (checked via directory listing)
+	PatternMarkers []string `yaml:"-"`
+
 	// Internal flags for detecting format conflicts
 	hasNewFormatIcons bool
 	hasOldFormatIcons bool
@@ -97,6 +103,23 @@ func (c *Config) GetPriorities() map[string]int {
 		m[k] = v
 	}
 	return m
+}
+
+// EnsureMarkerCategories ensures ExactMarkers and PatternMarkers are populated from Markers.
+// This is useful when Config is created directly (e.g., in tests) without using Load().
+func (c *Config) EnsureMarkerCategories() {
+	if len(c.ExactMarkers) > 0 || len(c.PatternMarkers) > 0 {
+		return // Already categorized
+	}
+	c.ExactMarkers = make([]string, 0, len(c.Markers))
+	c.PatternMarkers = make([]string, 0)
+	for _, marker := range c.Markers {
+		if IsPatternMarker(marker) {
+			c.PatternMarkers = append(c.PatternMarkers, marker)
+		} else {
+			c.ExactMarkers = append(c.ExactMarkers, marker)
+		}
+	}
 }
 
 // CLI interface for merging flags
@@ -161,12 +184,24 @@ func LoadWithVerbose(configPath string, verbose bool) (*Config, error) {
 	return cfg, nil
 }
 
+// IsPatternMarker returns true if the marker contains glob pattern characters
+func IsPatternMarker(marker string) bool {
+	return strings.ContainsAny(marker, "*?[]")
+}
+
 // processMarkers builds the Markers slice, Icons map, and Priorities map from RawMarkers
 // Used for processing defaults (doesn't set deprecation flags)
 func (c *Config) processMarkers() {
 	c.Markers = make([]string, len(c.RawMarkers))
+	c.ExactMarkers = make([]string, 0, len(c.RawMarkers))
+	c.PatternMarkers = make([]string, 0)
 	for i, mc := range c.RawMarkers {
 		c.Markers[i] = mc.Marker
+		if IsPatternMarker(mc.Marker) {
+			c.PatternMarkers = append(c.PatternMarkers, mc.Marker)
+		} else {
+			c.ExactMarkers = append(c.ExactMarkers, mc.Marker)
+		}
 	}
 	// Build icons from RawMarkers for defaults
 	c.Icons = make(map[string]string)
@@ -188,6 +223,8 @@ func (c *Config) processMarkers() {
 // yamlHadMarkers indicates whether the YAML config had a markers field
 func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defaultPriorities map[string]int, yamlHadMarkers bool) {
 	c.Markers = make([]string, len(c.RawMarkers))
+	c.ExactMarkers = make([]string, 0, len(c.RawMarkers))
+	c.PatternMarkers = make([]string, 0)
 	newIcons := make(map[string]string)
 	newPriorities := make(map[string]int)
 	// Track markers that explicitly set icons/priorities (even to empty/zero)
@@ -196,6 +233,12 @@ func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defa
 
 	for i, mc := range c.RawMarkers {
 		c.Markers[i] = mc.Marker
+		// Categorize into exact or pattern markers
+		if IsPatternMarker(mc.Marker) {
+			c.PatternMarkers = append(c.PatternMarkers, mc.Marker)
+		} else {
+			c.ExactMarkers = append(c.ExactMarkers, mc.Marker)
+		}
 		// Only consider this a "new format" if YAML actually had a markers field
 		if yamlHadMarkers {
 			if mc.HasIcon {
@@ -321,6 +364,12 @@ func (c *Config) MergeFlags(cli interface{}) error {
 			for i := 0; i < markerField.Len(); i++ {
 				marker := markerField.Index(i).String()
 				c.Markers = append(c.Markers, marker)
+				// Categorize CLI markers into exact or pattern
+				if IsPatternMarker(marker) {
+					c.PatternMarkers = append(c.PatternMarkers, marker)
+				} else {
+					c.ExactMarkers = append(c.ExactMarkers, marker)
+				}
 			}
 		}
 	}
