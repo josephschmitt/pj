@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/josephschmitt/pj/compare/v1.6.0...v1.7.0) (2026-02-04)
+
+
+### Features
+
+* add glob pattern support for markers ([#23](https://github.com/josephschmitt/pj/issues/23)) ([f1e292f](https://github.com/josephschmitt/pj/commit/f1e292f74b85033e4682630d88bc42637dc5aac2))
+
 ## [1.6.0](https://github.com/josephschmitt/pj/compare/v1.5.0...v1.6.0) (2026-02-02)
 
 
