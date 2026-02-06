@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -110,11 +111,9 @@ func (m *Manager) computeConfigHash() string {
 	sort.Strings(excludes)
 	h.Write([]byte(strings.Join(excludes, "|")))
 
-	fmt.Fprintf(h, "%d", m.config.MaxDepth)
-
-	fmt.Fprintf(h, "%t", m.config.NoIgnore)
-
-	fmt.Fprintf(h, "%t", m.config.Nested)
+	h.Write([]byte(strconv.Itoa(m.config.MaxDepth)))
+	h.Write([]byte(strconv.FormatBool(m.config.NoIgnore)))
+	h.Write([]byte(strconv.FormatBool(m.config.Nested)))
 
 	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }
