@@ -17,16 +17,42 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        go: ['1.23']
+        os: [ubuntu-latest, macos-latest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
+
+      - name: Run tests
+        run: devbox run -- make test-coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          files: coverage.out
+          fail_ci_if_error: false
+
+  test-windows:
+    name: Test (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read Go version from devbox.json
+        id: go-version
+        shell: bash
+        run: |
+          version=$(grep -oP 'go@\K[0-9]+\.[0-9]+' devbox.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
+          go-version: ${{ steps.go-version.outputs.version }}
           cache: true
 
       - name: Download dependencies
@@ -36,13 +62,6 @@ jobs:
         shell: bash
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          files: coverage.out
-          fail_ci_if_error: false
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -50,17 +69,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache: true
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout=5m
+      - name: Run linter
+        run: devbox run -- make lint
 
   goreleaser-check:
     name: GoReleaser Check
@@ -71,11 +84,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache: true
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.12.0
 
       - name: Check GoReleaser config
         uses: goreleaser/goreleaser-action@v6

@@ -21,10 +21,16 @@ jobs:
       - name: Fetch all tags
         run: git fetch --force --tags
 
+      - name: Read Go version from devbox.json
+        id: go-version
+        run: |
+          version=$(grep -oP 'go@\K[0-9]+\.[0-9]+' devbox.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: ${{ steps.go-version.outputs.version }}
           cache: true
 
       - name: Run GoReleaser
