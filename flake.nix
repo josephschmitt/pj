@@ -29,24 +29,6 @@
             maintainers = [ ];
           };
         };
-
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            go
-            gopls
-            gotools
-            go-tools
-            gnumake
-            git
-            lefthook
-          ];
-
-          shellHook = ''
-            echo "pj development environment"
-            echo "Go version: $(go version)"
-            lefthook install
-          '';
-        };
       }
     );
 }

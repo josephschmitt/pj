@@ -6,8 +6,24 @@ Thank you for your interest in contributing to `pj`! This guide will help you ge
 
 ### Prerequisites
 
-- Go 1.21 or later
-- Make (optional, but recommended)
+The easiest way to get started is with [devbox](https://get.jetify.com/devbox), which provides all required tools (Go, golangci-lint, lefthook, etc.) via Nix without installing them globally:
+
+```bash
+# Start a shell with all tools available
+devbox shell
+```
+
+If you use [direnv](https://direnv.net/), the environment activates automatically when you `cd` into the project:
+
+```bash
+direnv allow
+```
+
+Alternatively, you can install the dependencies manually:
+
+- Go 1.23 or later
+- golangci-lint
+- Make
 
 ### Building
 

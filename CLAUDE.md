@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `pj` is a fast project directory finder CLI written in Go that searches filesystems for git repositories and project directories. It's designed for speed and seamless integration with fuzzy finders like `fzf`.
 
+## Development Environment
+
+This project uses [devbox](https://get.jetify.com/devbox) to manage development tools (Go, golangci-lint, lefthook, etc.). Run `devbox shell` to enter the development environment, or use [direnv](https://direnv.net/) for automatic activation.
+
 ## Build Commands
 
 ```bash

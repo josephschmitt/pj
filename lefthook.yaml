@@ -1,3 +1,5 @@
+rc: .devboxrc
+
 pre-push:
   commands:
     build:
