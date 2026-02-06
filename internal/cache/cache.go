@@ -110,11 +110,11 @@ func (m *Manager) computeConfigHash() string {
 	sort.Strings(excludes)
 	h.Write([]byte(strings.Join(excludes, "|")))
 
-	h.Write([]byte(fmt.Sprintf("%d", m.config.MaxDepth)))
+	fmt.Fprintf(h, "%d", m.config.MaxDepth)
 
-	h.Write([]byte(fmt.Sprintf("%t", m.config.NoIgnore)))
+	fmt.Fprintf(h, "%t", m.config.NoIgnore)
 
-	h.Write([]byte(fmt.Sprintf("%t", m.config.Nested)))
+	fmt.Fprintf(h, "%t", m.config.Nested)
 
 	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }

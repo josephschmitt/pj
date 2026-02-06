@@ -712,7 +712,7 @@ icons:
 			t.Fatalf("LoadWithVerbose() error = %v", err)
 		}
 
-		w.Close()
+		_ = w.Close()
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
 		os.Stderr = oldStderr
@@ -747,7 +747,7 @@ icons:
 			t.Fatalf("LoadWithVerbose() error = %v", err)
 		}
 
-		w.Close()
+		_ = w.Close()
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
 		os.Stderr = oldStderr
@@ -781,7 +781,7 @@ icons:
 			t.Fatalf("LoadWithVerbose() error = %v", err)
 		}
 
-		w.Close()
+		_ = w.Close()
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
 		os.Stderr = oldStderr
@@ -814,7 +814,7 @@ icons:
 			t.Fatalf("LoadWithVerbose() error = %v", err)
 		}
 
-		w.Close()
+		_ = w.Close()
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
 		os.Stderr = oldStderr

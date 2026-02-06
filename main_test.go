@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 	binaryPath = filepath.Join(os.TempDir(), binaryName)
 	build := exec.Command("go", "build", "-o", binaryPath)
 	if err := build.Run(); err != nil {
-		os.Stderr.WriteString("Failed to build binary: " + err.Error() + "\n")
+		_, _ = os.Stderr.WriteString("Failed to build binary: " + err.Error() + "\n")
 		os.Exit(1)
 	}
 
@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// Cleanup
-	os.Remove(binaryPath)
+	_ = os.Remove(binaryPath)
 	os.Exit(code)
 }
 
