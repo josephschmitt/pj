@@ -46,7 +46,7 @@ jobs:
         id: go-version
         shell: bash
         run: |
-          version=$(grep -oP 'go@\K[0-9]+\.[0-9]+' devbox.json)
+          version=$(jq -r '.packages[] | select(startswith("go@")) | split("@")[1]' devbox.json)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
