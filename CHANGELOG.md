@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.1](https://github.com/josephschmitt/pj/compare/v1.7.0...v1.7.1) (2026-02-06)
+
+
+### Bug Fixes
+
+* **ci:** use jq instead of grep -P to read Go version from devbox.json ([0d862ff](https://github.com/josephschmitt/pj/commit/0d862ff511393a678621aeea0a04b500a6590c17))
+* enable CGO for race detector in test-coverage target ([38157e5](https://github.com/josephschmitt/pj/commit/38157e54d5b3659559e67170b6aaea15823bced4))
+* resolve errcheck lint errors in cache hash computation ([40dd4ad](https://github.com/josephschmitt/pj/commit/40dd4ad1f9c58ac8907df3ac29431a11f1ffccd7))
+* resolve lint errors for errcheck and staticcheck ([ff29c06](https://github.com/josephschmitt/pj/commit/ff29c06aa1551d6f897f3d496471fd346c2345e9))
+
 ## [1.7.0](https://github.com/josephschmitt/pj/compare/v1.6.0...v1.7.0) (2026-02-04)
 
 
