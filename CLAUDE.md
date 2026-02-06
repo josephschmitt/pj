@@ -12,36 +12,38 @@ This project uses [devbox](https://get.jetify.com/devbox) to manage development 
 
 ## Build Commands
 
+All commands must be run inside the devbox environment. For common tasks, prefer `devbox run <script>`. For other make targets, use `devbox run -- make <target>`.
+
 ```bash
 # Build for current platform
-make build
-
-# Install to $GOPATH/bin
-make install
-
-# Run the binary
-make run
+devbox run build
 
 # Run tests with coverage
-make test
-
-# Run tests with race detector and detailed coverage
-make test-coverage
+devbox run test
 
 # Run linter
-make lint
+devbox run lint
+
+# Run tests with race detector and detailed coverage
+devbox run -- make test-coverage
+
+# Install to $GOPATH/bin
+devbox run -- make install
+
+# Run the binary
+devbox run -- make run
 
 # Cross-compile for all platforms (outputs to dist/)
-make build-all
+devbox run -- make build-all
 
 # Validate GoReleaser config
-make release-check
+devbox run -- make release-check
 
 # Test GoReleaser locally without publishing
-make release-local
+devbox run -- make release-local
 
 # Clean build artifacts
-make clean
+devbox run -- make clean
 ```
 
 ## Architecture
@@ -178,10 +180,10 @@ func createTestProject(t *testing.T, base, name string, markers ...string) strin
 
 ```bash
 # Run all tests with coverage
-make test
+devbox run test
 
 # Run tests with race detector and coverage report
-make test-coverage
+devbox run -- make test-coverage
 
 # View coverage in browser
 # (Opens coverage.html after running test-coverage)
@@ -197,8 +199,8 @@ When adding a new feature:
    - Normal operation
    - Edge cases (empty input, nil values, etc.)
    - Error conditions
-4. Run `make test` to verify all tests pass
-5. Run `make test-coverage` to ensure coverage meets standards
+4. Run `devbox run test` to verify all tests pass
+5. Run `devbox run -- make test-coverage` to ensure coverage meets standards
 6. Commit feature code and tests together
 
 ## Distribution
