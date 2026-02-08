@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0](https://github.com/josephschmitt/pj/compare/v1.7.1...v1.8.0) (2026-02-08)
+
+
+### Features
+
+* add ANSI color support for icons ([#26](https://github.com/josephschmitt/pj/issues/26)) ([0adf9d1](https://github.com/josephschmitt/pj/commit/0adf9d19a873f1d1d1afd264a6f9fd046df2996b))
+* use brand-appropriate default colors for marker icons ([#28](https://github.com/josephschmitt/pj/issues/28)) ([e64436c](https://github.com/josephschmitt/pj/commit/e64436ccd2193a2ad859bb1dc32707df53e22dde))
+
+
+### Bug Fixes
+
+* always include color in JSON output when --icons is set ([#29](https://github.com/josephschmitt/pj/issues/29)) ([575b103](https://github.com/josephschmitt/pj/commit/575b10359bff1a93d6500eaad6990e71fb29bfaf))
+
 ## [1.7.1](https://github.com/josephschmitt/pj/compare/v1.7.0...v1.7.1) (2026-02-06)
 
 
