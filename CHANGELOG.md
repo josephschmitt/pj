@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/josephschmitt/pj/compare/v1.9.0...v1.10.0) (2026-02-08)
+
+
+### Features
+
+* add --shorten flag to replace $HOME with ~ in output ([#31](https://github.com/josephschmitt/pj/issues/31)) ([cbde1b3](https://github.com/josephschmitt/pj/commit/cbde1b3c8fbaaba7559188e5fe6edf0cd991fcec))
+
 ## [1.9.0](https://github.com/josephschmitt/pj/compare/v1.8.0...v1.9.0) (2026-02-08)
 
 
