@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -975,8 +976,19 @@ func TestCLI_AnsiJSON(t *testing.T) {
 	}
 }
 
+// setFakeHome sets the home directory env vars for all platforms.
+// On Windows, os.UserHomeDir() checks USERPROFILE before HOME.
+func setFakeHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	if runtime.GOOS == "windows" {
+		t.Setenv("USERPROFILE", dir)
+	}
+}
+
 func TestShortenHome(t *testing.T) {
-	homeDir := "/Users/joe"
+	sep := string(os.PathSeparator)
+	homeDir := filepath.FromSlash("/Users/joe")
 
 	tests := []struct {
 		name     string
@@ -984,12 +996,12 @@ func TestShortenHome(t *testing.T) {
 		homeDir  string
 		expected string
 	}{
-		{name: "path under home", path: "/Users/joe/projects/pj", homeDir: homeDir, expected: "~/projects/pj"},
-		{name: "path is home exactly", path: "/Users/joe", homeDir: homeDir, expected: "~"},
-		{name: "path outside home", path: "/opt/projects/pj", homeDir: homeDir, expected: "/opt/projects/pj"},
-		{name: "empty homeDir", path: "/Users/joe/projects/pj", homeDir: "", expected: "/Users/joe/projects/pj"},
-		{name: "path with similar prefix", path: "/Users/joextra/projects", homeDir: homeDir, expected: "/Users/joextra/projects"},
-		{name: "path is home with trailing slash content", path: "/Users/joe/", homeDir: homeDir, expected: "~/"},
+		{name: "path under home", path: filepath.FromSlash("/Users/joe/projects/pj"), homeDir: homeDir, expected: "~" + sep + filepath.Join("projects", "pj")},
+		{name: "path is home exactly", path: filepath.FromSlash("/Users/joe"), homeDir: homeDir, expected: "~"},
+		{name: "path outside home", path: filepath.FromSlash("/opt/projects/pj"), homeDir: homeDir, expected: filepath.FromSlash("/opt/projects/pj")},
+		{name: "empty homeDir", path: filepath.FromSlash("/Users/joe/projects/pj"), homeDir: "", expected: filepath.FromSlash("/Users/joe/projects/pj")},
+		{name: "path with similar prefix", path: filepath.FromSlash("/Users/joextra/projects"), homeDir: homeDir, expected: filepath.FromSlash("/Users/joextra/projects")},
+		{name: "path is home with trailing sep", path: homeDir + sep, homeDir: homeDir, expected: "~" + sep},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1003,10 +1015,11 @@ func TestShortenHome(t *testing.T) {
 
 func TestCLI_Shorten(t *testing.T) {
 	fakeHome := t.TempDir()
-	t.Setenv("HOME", fakeHome)
+	setFakeHome(t, fakeHome)
 
-	projectDir := createTestProject(t, fakeHome, "my-project", ".git/")
-	_ = projectDir
+	createTestProject(t, fakeHome, "my-project", ".git/")
+
+	tildePrefix := "~" + string(os.PathSeparator)
 
 	env := setupTestEnv(t)
 	stdout, stderr, err := env.runPJ("-p", fakeHome, "--no-cache", "--shorten")
@@ -1019,8 +1032,8 @@ func TestCLI_Shorten(t *testing.T) {
 		t.Fatalf("Expected 1 project, got %d\nOutput: %s", len(lines), stdout)
 	}
 
-	if !strings.HasPrefix(lines[0], "~/") {
-		t.Errorf("Output should start with ~/, got: %s", lines[0])
+	if !strings.HasPrefix(lines[0], tildePrefix) {
+		t.Errorf("Output should start with %s, got: %s", tildePrefix, lines[0])
 	}
 	if strings.Contains(lines[0], fakeHome) {
 		t.Errorf("Output should not contain absolute home path, got: %s", lines[0])
@@ -1029,9 +1042,11 @@ func TestCLI_Shorten(t *testing.T) {
 
 func TestCLI_ShortenWithIcons(t *testing.T) {
 	fakeHome := t.TempDir()
-	t.Setenv("HOME", fakeHome)
+	setFakeHome(t, fakeHome)
 
 	createTestProject(t, fakeHome, "go-project", "go.mod")
+
+	tildePrefix := "~" + string(os.PathSeparator)
 
 	env := setupTestEnv(t)
 	stdout, stderr, err := env.runPJ("-p", fakeHome, "--no-cache", "--shorten", "--icons")
@@ -1044,8 +1059,8 @@ func TestCLI_ShortenWithIcons(t *testing.T) {
 		t.Fatalf("Expected 1 project, got %d", len(lines))
 	}
 
-	if !strings.Contains(lines[0], "~/") {
-		t.Errorf("Output with --shorten --icons should contain ~/, got: %s", lines[0])
+	if !strings.Contains(lines[0], tildePrefix) {
+		t.Errorf("Output with --shorten --icons should contain %s, got: %s", tildePrefix, lines[0])
 	}
 	if !strings.HasSuffix(lines[0], "go-project") {
 		t.Errorf("Output should end with project name, got: %s", lines[0])
@@ -1054,7 +1069,7 @@ func TestCLI_ShortenWithIcons(t *testing.T) {
 
 func TestCLI_ShortenJSON(t *testing.T) {
 	fakeHome := t.TempDir()
-	t.Setenv("HOME", fakeHome)
+	setFakeHome(t, fakeHome)
 
 	createTestProject(t, fakeHome, "go-project", "go.mod")
 
@@ -1089,8 +1104,9 @@ func TestCLI_ShortenJSON(t *testing.T) {
 	}
 
 	// displayPath should be shortened
-	if !strings.HasPrefix(proj.DisplayPath, "~/") {
-		t.Errorf("displayPath should start with ~/, got: %s", proj.DisplayPath)
+	tildePrefix := "~" + string(os.PathSeparator)
+	if !strings.HasPrefix(proj.DisplayPath, tildePrefix) {
+		t.Errorf("displayPath should start with %s, got: %s", tildePrefix, proj.DisplayPath)
 	}
 
 	// name should still be correct
@@ -1117,7 +1133,7 @@ func TestCLI_ShortenJSONDisabled(t *testing.T) {
 
 func TestCLI_ShortenNonHomePath(t *testing.T) {
 	fakeHome := t.TempDir()
-	t.Setenv("HOME", fakeHome)
+	setFakeHome(t, fakeHome)
 
 	// Create project outside of fake home
 	otherDir := t.TempDir()
@@ -1135,8 +1151,9 @@ func TestCLI_ShortenNonHomePath(t *testing.T) {
 	}
 
 	// Path outside home should not be shortened
-	if strings.HasPrefix(lines[0], "~/") {
-		t.Errorf("Path outside home should not start with ~/, got: %s", lines[0])
+	tildePrefix := "~" + string(os.PathSeparator)
+	if strings.HasPrefix(lines[0], tildePrefix) {
+		t.Errorf("Path outside home should not start with %s, got: %s", tildePrefix, lines[0])
 	}
 	if !strings.HasPrefix(lines[0], otherDir) {
 		t.Errorf("Path outside home should remain absolute, got: %s", lines[0])
