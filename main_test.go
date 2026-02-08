@@ -847,6 +847,125 @@ func TestCLI_JSONEmpty(t *testing.T) {
 	}
 }
 
+func TestCLI_AnsiIcons(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	// Run with --icons --ansi
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--icons", "--ansi")
+	if err != nil {
+		t.Fatalf("pj --icons --ansi failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	// Output should contain ANSI escape codes (\033[)
+	if !strings.Contains(lines[0], "\033[") {
+		t.Error("Output with --icons --ansi should contain ANSI escape codes")
+	}
+
+	// Output should contain the reset sequence \033[39m
+	if !strings.Contains(lines[0], "\033[39m") {
+		t.Error("Output with --icons --ansi should contain ANSI reset sequence")
+	}
+
+	// Should still end with the project path
+	if !strings.HasSuffix(lines[0], "go-project") {
+		t.Error("Output with --icons --ansi should end with project name")
+	}
+}
+
+func TestCLI_AnsiWithoutIcons(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	// Run with just --ansi (no --icons)
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--ansi")
+	if err != nil {
+		t.Fatalf("pj --ansi failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	// Without --icons, output should NOT contain ANSI escape codes
+	if strings.Contains(lines[0], "\033[") {
+		t.Error("Output with --ansi but without --icons should not contain ANSI escape codes")
+	}
+}
+
+func TestCLI_AnsiColorMap(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	// Run with --icons --ansi --color-map go.mod:cyan
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--icons", "--ansi", "--color-map", "go.mod:cyan")
+	if err != nil {
+		t.Fatalf("pj --icons --ansi --color-map failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	// Cyan is ANSI code 36, so output should contain \033[36m
+	if !strings.Contains(lines[0], "\033[36m") {
+		t.Error("Output with --color-map go.mod:cyan should contain cyan ANSI code (\\033[36m)")
+	}
+}
+
+func TestCLI_AnsiJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json", "--icons", "--ansi")
+	if err != nil {
+		t.Fatalf("pj --json --icons --ansi failed: %v\nStderr: %s", err, stderr)
+	}
+
+	var result struct {
+		Projects []struct {
+			Path   string `json:"path"`
+			Name   string `json:"name"`
+			Marker string `json:"marker"`
+			Icon   string `json:"icon,omitempty"`
+			Color  string `json:"color,omitempty"`
+		} `json:"projects"`
+	}
+
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, stdout)
+	}
+
+	if len(result.Projects) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(result.Projects))
+	}
+
+	proj := result.Projects[0]
+
+	if proj.Color == "" {
+		t.Error("Color field should be populated when --icons --ansi are used")
+	}
+	if proj.Color != "blue" {
+		t.Errorf("Color = %q, want %q (default)", proj.Color, "blue")
+	}
+
+	// Icon in JSON should be plain (not ANSI-wrapped)
+	if strings.Contains(proj.Icon, "\033[") {
+		t.Error("Icon in JSON output should not contain ANSI codes")
+	}
+}
+
 func TestCLI_JSONOutputFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 

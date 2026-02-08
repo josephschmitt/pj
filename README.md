@@ -15,6 +15,7 @@
 - **Smart Caching**: Caches results for instant subsequent searches (5-minute TTL)
 - **Flexible Markers**: Detects projects by `.git`, `go.mod`, `package.json`, `Cargo.toml`, and more
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
+- **ANSI Color Support**: Colorize icons with ANSI codes for terminal tools like `fzf` and `television`
 - **Unix Pipeline Support**: Pipe paths in and results out - works seamlessly in command chains
 - **Configurable**: YAML configuration file with sensible defaults
 - **Cross-Platform**: Works on macOS, Linux, and Windows
@@ -164,6 +165,9 @@ pj
 # Show projects with icons
 pj --icons
 
+# Show projects with colored icons
+pj --icons --ansi
+
 # Force fresh search (skip cache)
 pj --no-cache
 
@@ -184,8 +188,10 @@ pj --version
 | `--exclude PATTERN` | `-e` | Exclude pattern (repeatable) |
 | `--max-depth N` | `-d` | Maximum search depth |
 | `--icons` | | Show marker-based icons |
+| `--ansi` | | Colorize icons with ANSI codes |
 | `--strip` | | Strip icons from output |
 | `--icon-map MARKER:ICON` | | Override icon mapping |
+| `--color-map MARKER:COLOR` | | Override icon color |
 | `--no-cache` | | Skip cache, force fresh search |
 | `--clear-cache` | | Clear cache and exit |
 | `--verbose` | `-v` | Enable debug output |
@@ -205,6 +211,9 @@ pj -e tmp -e cache
 
 # Custom icon mapping
 pj --icons --icon-map "go.mod:🐹"
+
+# Colored icons with per-marker override
+pj --icons --ansi --color-map "go.mod:cyan"
 
 # Verbose output for debugging
 pj -v
@@ -293,11 +302,13 @@ search_paths:
   - ~/development
   - ~/work
 
-# Files/directories that mark a project (with optional icons and priority)
-# Each marker can be a simple string or an object with marker, icon, and priority fields
+# Files/directories that mark a project (with optional icons, colors, and priority)
+# Each marker can be a simple string or an object with marker, icon, color, and priority fields
 # Priority determines which marker is used when multiple exist in the same directory
 # Higher priority wins. Default priorities: language=10, infrastructure=7, IDE=5, generic=1
 # Glob patterns are supported: *.csproj, *.sln, test_*.yml, etc.
+# Color is used with --ansi flag. Available colors: black, red, green, yellow, blue,
+# magenta, cyan, white, and bright- variants. Default: blue
 markers:
   - marker: .git
     icon: ""      # \ue65d - Git icon
@@ -318,7 +329,7 @@ markers:
   - marker: .idea
     icon: ""      # \ue7b5 - IntelliJ icon
   - marker: build.gradle
-    # icon and priority are optional - omit for defaults
+    # icon, color, and priority are optional - omit for defaults
   - marker: "*.csproj"       # Glob patterns for variable file names
     icon: "󰪮"
   - marker: "*.sln"
@@ -429,7 +440,7 @@ Add to your `~/.bashrc` or `~/.zshrc`:
 # Quick project navigation with fzf
 pjf() {
   local project
-  project=$(pj --icons | fzf --ansi --preview 'ls -la {2}' --preview-window right:60%) &&
+  project=$(pj --icons --ansi | fzf --ansi --preview 'ls -la {2}' --preview-window right:60%) &&
   cd "$(echo "$project" | awk '{print $2}')"
 }
 ```
@@ -450,7 +461,7 @@ pjf() {
 # Quick project navigation with television
 pjt() {
   local project
-  project=$(pj --icons | tv) &&
+  project=$(pj --icons --ansi | tv) &&
   cd "$(echo "$project" | awk '{print $2}')"
 }
 ```
@@ -473,7 +484,7 @@ Add to your `~/.config/fish/config.fish`:
 
 ```fish
 function pjf
-    set -l project (pj --icons | fzf --ansi --preview 'ls -la (echo {} | awk \'{print $2}\')' --preview-window right:60%)
+    set -l project (pj --icons --ansi | fzf --ansi --preview 'ls -la (echo {} | awk \'{print $2}\')' --preview-window right:60%)
     and cd (echo $project | awk '{print $2}')
 end
 ```
@@ -482,7 +493,7 @@ end
 
 ```fish
 function pjt
-    set -l project (pj --icons | tv)
+    set -l project (pj --icons --ansi | tv)
     and cd (echo $project | awk '{print $2}')
 end
 ```
