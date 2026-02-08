@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/josephschmitt/pj/compare/v1.10.0...v1.11.0) (2026-02-08)
+
+
+### Features
+
+* add ansiIcon field to JSON output ([#33](https://github.com/josephschmitt/pj/issues/33)) ([17198b3](https://github.com/josephschmitt/pj/commit/17198b3e67c6ea5e92cd02b4ccc3cf7e7e9a0439))
+
 ## [1.10.0](https://github.com/josephschmitt/pj/compare/v1.9.0...v1.10.0) (2026-02-08)
 
 
