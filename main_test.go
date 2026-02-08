@@ -747,6 +747,7 @@ func TestCLI_JSONOutputWithIcons(t *testing.T) {
 			Name   string `json:"name"`
 			Marker string `json:"marker"`
 			Icon   string `json:"icon,omitempty"`
+			Color  string `json:"color,omitempty"`
 		} `json:"projects"`
 	}
 
@@ -763,6 +764,14 @@ func TestCLI_JSONOutputWithIcons(t *testing.T) {
 	// Verify icon field is populated when --icons is used
 	if proj.Icon == "" {
 		t.Error("Icon field should be populated when --icons flag is used")
+	}
+
+	// Verify color field is populated when --icons is used (even without --ansi)
+	if proj.Color == "" {
+		t.Error("Color field should be populated when --icons flag is used")
+	}
+	if proj.Color != "cyan" {
+		t.Errorf("Color = %q, want %q (go.mod default)", proj.Color, "cyan")
 	}
 
 	// Verify marker is go.mod

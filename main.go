@@ -188,9 +188,7 @@ func main() {
 			color := ""
 			if cli.Icons {
 				icon = iconMapper.Get(p.Marker)
-				if cli.Ansi {
-					color = iconMapper.GetColor(p.Marker)
-				}
+				color = iconMapper.GetColor(p.Marker)
 			}
 			jsonProjects[i] = projectJSON{
 				Path:   p.Path,
