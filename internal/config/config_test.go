@@ -897,7 +897,7 @@ icons:
 }
 
 func TestColorConfig(t *testing.T) {
-	t.Run("default colors are blue", func(t *testing.T) {
+	t.Run("default colors are set", func(t *testing.T) {
 		cfg := defaults()
 		cfg.processMarkers()
 
@@ -905,15 +905,31 @@ func TestColorConfig(t *testing.T) {
 			if !mc.HasColor {
 				t.Errorf("Default marker %q should have HasColor=true", mc.Marker)
 			}
-			if mc.Color != "blue" {
-				t.Errorf("Default marker %q color = %q, want %q", mc.Marker, mc.Color, "blue")
+			if mc.Color == "" {
+				t.Errorf("Default marker %q should have a non-empty color", mc.Marker)
 			}
 		}
 
+		expectedColors := map[string]string{
+			".git":           "bright-red",
+			"go.mod":         "cyan",
+			"package.json":   "green",
+			"Cargo.toml":     "red",
+			"pyproject.toml": "yellow",
+			"Makefile":       "white",
+			"flake.nix":      "bright-blue",
+			".vscode":        "blue",
+			".idea":          "magenta",
+			".fleet":         "magenta",
+			".project":       "blue",
+			".zed":           "blue",
+			"Dockerfile":     "cyan",
+		}
+
 		colors := cfg.GetColors()
-		for _, mc := range cfg.RawMarkers {
-			if colors[mc.Marker] != "blue" {
-				t.Errorf("GetColors()[%q] = %q, want %q", mc.Marker, colors[mc.Marker], "blue")
+		for marker, expected := range expectedColors {
+			if colors[marker] != expected {
+				t.Errorf("GetColors()[%q] = %q, want %q", marker, colors[marker], expected)
 			}
 		}
 	})
@@ -947,9 +963,9 @@ func TestColorConfig(t *testing.T) {
 			t.Errorf("Colors[Cargo.toml] = %q, want %q", colors["Cargo.toml"], "red")
 		}
 
-		// Markers not in config should keep default blue
-		if colors[".git"] != "blue" {
-			t.Errorf("Colors[.git] = %q, want %q (default)", colors[".git"], "blue")
+		// Markers not in config should keep their default color
+		if colors[".git"] != "bright-red" {
+			t.Errorf("Colors[.git] = %q, want %q (default)", colors[".git"], "bright-red")
 		}
 	})
 
@@ -975,9 +991,9 @@ func TestColorConfig(t *testing.T) {
 			t.Errorf("Colors[.git] = %q, want %q (YAML should override default)", colors[".git"], "magenta")
 		}
 
-		// Other markers should retain default blue
-		if colors["go.mod"] != "blue" {
-			t.Errorf("Colors[go.mod] = %q, want %q (default)", colors["go.mod"], "blue")
+		// Other markers should retain their default color
+		if colors["go.mod"] != "cyan" {
+			t.Errorf("Colors[go.mod] = %q, want %q (default)", colors["go.mod"], "cyan")
 		}
 	})
 }
