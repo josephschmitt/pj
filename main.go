@@ -196,6 +196,7 @@ func main() {
 			Name        string `json:"name"`
 			Marker      string `json:"marker"`
 			Icon        string `json:"icon,omitempty"`
+			AnsiIcon    string `json:"ansiIcon,omitempty"`
 			Color       string `json:"color,omitempty"`
 		}
 		type outputJSON struct {
@@ -205,10 +206,14 @@ func main() {
 		jsonProjects := make([]projectJSON, len(projects))
 		for i, p := range projects {
 			icon := ""
+			ansiIcon := ""
 			color := ""
 			if cli.Icons {
 				icon = iconMapper.Get(p.Marker)
 				color = iconMapper.GetColor(p.Marker)
+				if cli.Ansi {
+					ansiIcon = iconMapper.Format(p.Marker, true)
+				}
 			}
 			displayPath := ""
 			if cli.Shorten {
@@ -220,6 +225,7 @@ func main() {
 				Name:        filepath.Base(p.Path),
 				Marker:      p.Marker,
 				Icon:        icon,
+				AnsiIcon:    ansiIcon,
 				Color:       color,
 			}
 		}
