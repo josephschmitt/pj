@@ -956,8 +956,8 @@ func TestCLI_AnsiJSON(t *testing.T) {
 	if proj.Color == "" {
 		t.Error("Color field should be populated when --icons --ansi are used")
 	}
-	if proj.Color != "blue" {
-		t.Errorf("Color = %q, want %q (default)", proj.Color, "blue")
+	if proj.Color != "cyan" {
+		t.Errorf("Color = %q, want %q (go.mod default)", proj.Color, "cyan")
 	}
 
 	// Icon in JSON should be plain (not ANSI-wrapped)
