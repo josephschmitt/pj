@@ -945,11 +945,12 @@ func TestCLI_AnsiJSON(t *testing.T) {
 
 	var result struct {
 		Projects []struct {
-			Path   string `json:"path"`
-			Name   string `json:"name"`
-			Marker string `json:"marker"`
-			Icon   string `json:"icon,omitempty"`
-			Color  string `json:"color,omitempty"`
+			Path     string `json:"path"`
+			Name     string `json:"name"`
+			Marker   string `json:"marker"`
+			Icon     string `json:"icon,omitempty"`
+			AnsiIcon string `json:"ansiIcon,omitempty"`
+			Color    string `json:"color,omitempty"`
 		} `json:"projects"`
 	}
 
@@ -973,6 +974,46 @@ func TestCLI_AnsiJSON(t *testing.T) {
 	// Icon in JSON should be plain (not ANSI-wrapped)
 	if strings.Contains(proj.Icon, "\033[") {
 		t.Error("Icon in JSON output should not contain ANSI codes")
+	}
+
+	// AnsiIcon should contain ANSI codes when --ansi is used
+	if proj.AnsiIcon == "" {
+		t.Error("AnsiIcon field should be populated when --icons --ansi are used")
+	}
+	if !strings.Contains(proj.AnsiIcon, "\033[") {
+		t.Error("AnsiIcon should contain ANSI escape codes")
+	}
+	if !strings.Contains(proj.AnsiIcon, proj.Icon) {
+		t.Errorf("AnsiIcon %q should contain the plain icon %q", proj.AnsiIcon, proj.Icon)
+	}
+}
+
+func TestCLI_AnsiJSONDisabled(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json", "--icons")
+	if err != nil {
+		t.Fatalf("pj --json --icons failed: %v\nStderr: %s", err, stderr)
+	}
+
+	var result struct {
+		Projects []struct {
+			AnsiIcon string `json:"ansiIcon,omitempty"`
+		} `json:"projects"`
+	}
+
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, stdout)
+	}
+
+	if len(result.Projects) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(result.Projects))
+	}
+
+	if result.Projects[0].AnsiIcon != "" {
+		t.Error("AnsiIcon should be empty when --ansi is not used")
 	}
 }
 
