@@ -1,18 +1,45 @@
 package icons
 
-// Mapper handles icon mapping for project markers
-type Mapper struct {
-	iconMap map[string]string
+import "fmt"
+
+// ANSI color codes for foreground colors
+var ansiColors = map[string]int{
+	"black":          30,
+	"red":            31,
+	"green":          32,
+	"yellow":         33,
+	"blue":           34,
+	"magenta":        35,
+	"cyan":           36,
+	"white":          37,
+	"bright-black":   90,
+	"bright-red":     91,
+	"bright-green":   92,
+	"bright-yellow":  93,
+	"bright-blue":    94,
+	"bright-magenta": 95,
+	"bright-cyan":    96,
+	"bright-white":   97,
 }
 
-// NewMapper creates a new icon mapper with the given icon map
-func NewMapper(iconMap map[string]string) *Mapper {
-	// Create a copy to avoid mutations
-	m := make(map[string]string)
+// Mapper handles icon and color mapping for project markers
+type Mapper struct {
+	iconMap  map[string]string
+	colorMap map[string]string
+}
+
+// NewMapper creates a new icon mapper with the given icon and color maps
+func NewMapper(iconMap, colorMap map[string]string) *Mapper {
+	// Create copies to avoid mutations
+	im := make(map[string]string)
 	for k, v := range iconMap {
-		m[k] = v
+		im[k] = v
 	}
-	return &Mapper{iconMap: m}
+	cm := make(map[string]string)
+	for k, v := range colorMap {
+		cm[k] = v
+	}
+	return &Mapper{iconMap: im, colorMap: cm}
 }
 
 // Get returns the icon for a given marker
@@ -27,4 +54,33 @@ func (m *Mapper) Get(marker string) string {
 // Set updates or adds an icon mapping
 func (m *Mapper) Set(marker, icon string) {
 	m.iconMap[marker] = icon
+}
+
+// GetColor returns the color name for a given marker, defaulting to "blue"
+func (m *Mapper) GetColor(marker string) string {
+	if color, ok := m.colorMap[marker]; ok {
+		return color
+	}
+	return "blue"
+}
+
+// SetColor updates or adds a color mapping
+func (m *Mapper) SetColor(marker, color string) {
+	m.colorMap[marker] = color
+}
+
+// Format returns the icon for a marker, optionally wrapped in ANSI color codes.
+// When ansi is true, the icon is wrapped as \033[<code>m<icon>\033[39m.
+// When ansi is false, the plain icon is returned.
+func (m *Mapper) Format(marker string, ansi bool) string {
+	icon := m.Get(marker)
+	if !ansi {
+		return icon
+	}
+	color := m.GetColor(marker)
+	code, ok := ansiColors[color]
+	if !ok {
+		code = ansiColors["blue"]
+	}
+	return fmt.Sprintf("\033[%dm%s\033[39m", code, icon)
 }

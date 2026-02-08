@@ -54,7 +54,7 @@ devbox run -- make clean
 2. **config package** - Loads YAML config from `~/.config/pj/config.yaml` or XDG_CONFIG_HOME, merges with CLI flags
 3. **cache package** - Manages JSON cache files in `~/.cache/pj/` or XDG_CACHE_HOME with TTL-based invalidation
 4. **discover package** - Walks filesystem concurrently to find project directories
-5. **icons package** - Maps project markers (`.git`, `go.mod`, etc.) to Nerd Font icons
+5. **icons package** - Maps project markers (`.git`, `go.mod`, etc.) to Nerd Font icons and ANSI colors
 
 ### Key Design Patterns
 
@@ -74,6 +74,10 @@ The config loading order is:
 3. CLI flags (highest priority)
 
 CLI flags use reflection to merge into config struct, avoiding tight coupling between CLI and config packages.
+
+### ANSI Color System
+
+The `--ansi` flag wraps icons in ANSI foreground color codes (`\033[<code>m<icon>\033[39m`). Colors are configured per-marker via the `color` field in `MarkerConfig` (default: "blue") and can be overridden with `--color-map MARKER:COLOR`. The `icons.Mapper.Format()` method handles ANSI wrapping. Supported colors: black, red, green, yellow, blue, magenta, cyan, white, and bright- variants (16 total).
 
 ## Release Process
 

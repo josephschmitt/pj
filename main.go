@@ -28,6 +28,8 @@ type CLI struct {
 	Icons      bool     `help:"Show marker-based icons"`
 	Strip      bool     `help:"Strip icons from output"`
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
+	Ansi       bool     `help:"Colorize icons with ANSI codes"`
+	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
 	JSON       bool     `short:"j" help:"Output results in JSON format"`
@@ -104,12 +106,20 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Config: %+v\n", cfg)
 	}
 
-	iconMapper := icons.NewMapper(cfg.GetIcons())
+	iconMapper := icons.NewMapper(cfg.GetIcons(), cfg.GetColors())
 	if len(cli.IconMap) > 0 {
 		for _, mapping := range cli.IconMap {
 			parts := strings.SplitN(mapping, ":", 2)
 			if len(parts) == 2 {
 				iconMapper.Set(parts[0], parts[1])
+			}
+		}
+	}
+	if len(cli.ColorMap) > 0 {
+		for _, mapping := range cli.ColorMap {
+			parts := strings.SplitN(mapping, ":", 2)
+			if len(parts) == 2 {
+				iconMapper.SetColor(parts[0], parts[1])
 			}
 		}
 	}
@@ -166,6 +176,7 @@ func main() {
 			Name   string `json:"name"`
 			Marker string `json:"marker"`
 			Icon   string `json:"icon,omitempty"`
+			Color  string `json:"color,omitempty"`
 		}
 		type outputJSON struct {
 			Projects []projectJSON `json:"projects"`
@@ -174,14 +185,19 @@ func main() {
 		jsonProjects := make([]projectJSON, len(projects))
 		for i, p := range projects {
 			icon := ""
+			color := ""
 			if cli.Icons {
 				icon = iconMapper.Get(p.Marker)
+				if cli.Ansi {
+					color = iconMapper.GetColor(p.Marker)
+				}
 			}
 			jsonProjects[i] = projectJSON{
 				Path:   p.Path,
 				Name:   filepath.Base(p.Path),
 				Marker: p.Marker,
 				Icon:   icon,
+				Color:  color,
 			}
 		}
 
@@ -195,7 +211,7 @@ func main() {
 		for _, p := range projects {
 			output := p.Path
 			if cli.Icons && !cli.Strip {
-				icon := iconMapper.Get(p.Marker)
+				icon := iconMapper.Format(p.Marker, cli.Ansi)
 				output = fmt.Sprintf("%s %s", icon, output)
 			}
 			fmt.Println(output)

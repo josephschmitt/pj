@@ -895,3 +895,89 @@ icons:
 		}
 	})
 }
+
+func TestColorConfig(t *testing.T) {
+	t.Run("default colors are blue", func(t *testing.T) {
+		cfg := defaults()
+		cfg.processMarkers()
+
+		for _, mc := range cfg.RawMarkers {
+			if !mc.HasColor {
+				t.Errorf("Default marker %q should have HasColor=true", mc.Marker)
+			}
+			if mc.Color != "blue" {
+				t.Errorf("Default marker %q color = %q, want %q", mc.Marker, mc.Color, "blue")
+			}
+		}
+
+		colors := cfg.GetColors()
+		for _, mc := range cfg.RawMarkers {
+			if colors[mc.Marker] != "blue" {
+				t.Errorf("GetColors()[%q] = %q, want %q", mc.Marker, colors[mc.Marker], "blue")
+			}
+		}
+	})
+
+	t.Run("color field in YAML marker config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: go.mod
+    icon: "󰟓"
+    color: cyan
+  - marker: Cargo.toml
+    color: red
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		colors := cfg.GetColors()
+
+		if colors["go.mod"] != "cyan" {
+			t.Errorf("Colors[go.mod] = %q, want %q", colors["go.mod"], "cyan")
+		}
+		if colors["Cargo.toml"] != "red" {
+			t.Errorf("Colors[Cargo.toml] = %q, want %q", colors["Cargo.toml"], "red")
+		}
+
+		// Markers not in config should keep default blue
+		if colors[".git"] != "blue" {
+			t.Errorf("Colors[.git] = %q, want %q (default)", colors[".git"], "blue")
+		}
+	})
+
+	t.Run("color merge precedence - YAML overrides defaults", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    color: magenta
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		colors := cfg.GetColors()
+		if colors[".git"] != "magenta" {
+			t.Errorf("Colors[.git] = %q, want %q (YAML should override default)", colors[".git"], "magenta")
+		}
+
+		// Other markers should retain default blue
+		if colors["go.mod"] != "blue" {
+			t.Errorf("Colors[go.mod] = %q, want %q (default)", colors["go.mod"], "blue")
+		}
+	})
+}
