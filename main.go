@@ -17,8 +17,6 @@ import (
 
 var version = "dev"
 
-// LabelsFlag is a custom flag type that defaults to "label" when --labels is
-// passed without a value, and accepts "label" or "display" as explicit values.
 type LabelsFlag string
 
 func (l LabelsFlag) IsBool() bool { return true }
@@ -53,7 +51,7 @@ type CLI struct {
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
 	Ansi       bool     `help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
-	Labels      LabelsFlag `help:"Show marker label in output (default: label, or display)"`
+	Labels     LabelsFlag `help:"Show marker label in output (label or display)"`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
