@@ -212,6 +212,8 @@ pj --version
 | `--icon-map MARKER:ICON` | | Override icon mapping |
 | `--color-map MARKER:COLOR` | | Override icon color |
 | `--format FORMAT` | `-f` | Custom output format (see [Format Placeholders](#format-placeholders)) |
+| `--sort VALUE` | | Sort order: `alpha`, `priority`, `label` (default: `priority`) |
+| `--sort-direction VALUE` | | Sort direction: `asc`, `desc` (default: `desc`) |
 | `--no-cache` | | Skip cache, force fresh search |
 | `--clear-cache` | | Clear cache and exit |
 | `--verbose` | `-v` | Enable debug output |
@@ -243,6 +245,12 @@ pj --labels display
 
 # Combine icons, labels, and color
 pj --icons -la
+
+# Sort alphabetically by path
+pj --sort alpha
+
+# Sort by label name
+pj --sort label --sort-direction asc
 
 # Verbose output for debugging
 pj -v

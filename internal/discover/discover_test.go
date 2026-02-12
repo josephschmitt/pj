@@ -234,15 +234,11 @@ func TestDiscover(t *testing.T) {
 		}
 	}
 
-	// Verify results are sorted by priority then path
+	// Verify results are sorted by path
 	if len(projects) > 1 {
 		for i := 0; i < len(projects)-1; i++ {
-			if projects[i].Priority < projects[i+1].Priority {
-				t.Errorf("Projects not sorted by priority: project[%d].Priority = %d < project[%d].Priority = %d",
-					i, projects[i].Priority, i+1, projects[i+1].Priority)
-			}
-			if projects[i].Priority == projects[i+1].Priority && projects[i].Path > projects[i+1].Path {
-				t.Errorf("Projects with same priority not sorted by path: %q > %q",
+			if projects[i].Path > projects[i+1].Path {
+				t.Errorf("Projects not sorted by path: %q > %q",
 					projects[i].Path, projects[i+1].Path)
 			}
 		}

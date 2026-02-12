@@ -100,11 +100,8 @@ func (d *Discoverer) Discover() ([]Project, error) {
 		}
 	}
 
-	// Sort by priority (higher first), then by path
+	// Sort by path for deterministic output; presentation sorting is handled by the caller
 	sort.Slice(projects, func(i, j int) bool {
-		if projects[i].Priority != projects[j].Priority {
-			return projects[i].Priority > projects[j].Priority
-		}
 		return projects[i].Path < projects[j].Path
 	})
 
