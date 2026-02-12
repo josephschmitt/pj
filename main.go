@@ -49,9 +49,9 @@ type CLI struct {
 	Icons      bool     `help:"Show marker-based icons"`
 	Strip      bool     `help:"Strip icons from output"`
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
-	Ansi       bool     `help:"Colorize icons with ANSI codes"`
+	Ansi       bool     `short:"a" help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
-	Labels     LabelsFlag `help:"Show marker label in output (label or display)"`
+	Labels     LabelsFlag `short:"l" help:"Show marker label in output (label or display)"`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
