@@ -17,6 +17,7 @@
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
 - **Label Support**: Show marker labels like `go` or `Go` alongside project paths
 - **ANSI Color Support**: Colorize icons with ANSI codes for terminal tools like `fzf` and `television`
+- **Custom Output Format**: Use `--format` with `%`-based placeholders for full control over output
 - **Unix Pipeline Support**: Pipe paths in and results out - works seamlessly in command chains
 - **Configurable**: YAML configuration file with sensible defaults
 - **Cross-Platform**: Works on macOS, Linux, and Windows
@@ -210,6 +211,7 @@ pj --version
 | `--strip` | | Strip icons from output |
 | `--icon-map MARKER:ICON` | | Override icon mapping |
 | `--color-map MARKER:COLOR` | | Override icon color |
+| `--format FORMAT` | `-f` | Custom output format (see [Format Placeholders](#format-placeholders)) |
 | `--no-cache` | | Skip cache, force fresh search |
 | `--clear-cache` | | Clear cache and exit |
 | `--verbose` | `-v` | Enable debug output |
@@ -245,6 +247,41 @@ pj --icons -la
 # Verbose output for debugging
 pj -v
 ```
+
+### Format Placeholders
+
+The `--format` / `-f` flag gives you full control over the output format using `%`-based placeholders. When `--format` is set, it is the sole determinant of the output — no implicit icon or label prepending.
+
+| Placeholder | Description |
+|-------------|-------------|
+| `%p` | Project path (respects `--shorten`) |
+| `%P` | Full project path (always absolute) |
+| `%n` | Project name (directory basename) |
+| `%m` | Marker name (e.g., `go.mod`, `.git`) |
+| `%i` | Icon (requires `--icons`, respects `--ansi`) |
+| `%l` | Label (e.g., `go`, `nodejs`) |
+| `%L` | Display label (e.g., `Go`, `NodeJS`) |
+| `%c` | Color name (e.g., `cyan`, `blue`) |
+| `%%` | Literal `%` |
+
+```bash
+# Show just project names
+pj --format "%n"
+
+# Show marker and path
+pj --format "%m: %p"
+
+# Show icon with label and path
+pj --icons --format "%i [%l] %p"
+
+# Show display label with full path
+pj --format "%L: %P"
+
+# Custom format with colored icons
+pj --icons --ansi --format "%i %n (%m)"
+```
+
+**Note:** `--format` is silently ignored when combined with `--json`.
 
 ### Unix Pipeline Support
 

@@ -52,6 +52,7 @@ type CLI struct {
 	Ansi       bool     `short:"a" help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
 	Labels     LabelsFlag `short:"l" help:"Show marker label in output (label or display)"`
+	Format     string   `short:"f" help:"Custom output format (%p=path, %P=full-path, %n=name, %m=marker, %i=icon, %l=label, %L=display-label, %c=color)" default:""`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
@@ -103,6 +104,19 @@ func readPathsFromStdin(verbose bool) []string {
 		paths = append(paths, path)
 	}
 	return paths
+}
+
+func formatOutput(format string, values map[string]string) string {
+	const sentinel = "\x00PCT\x00"
+	result := strings.ReplaceAll(format, "%%", sentinel)
+	// Replace %P before %p to avoid %P being partially matched as %p + "P"
+	for _, placeholder := range []string{"%P", "%p", "%n", "%m", "%i", "%L", "%l", "%c"} {
+		if val, ok := values[placeholder]; ok {
+			result = strings.ReplaceAll(result, placeholder, val)
+		}
+	}
+	result = strings.ReplaceAll(result, sentinel, "%")
+	return result
 }
 
 func main() {
@@ -261,6 +275,28 @@ func main() {
 		if err := enc.Encode(outputJSON{Projects: jsonProjects}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error encoding JSON: %v\n", err)
 			os.Exit(1)
+		}
+	} else if cli.Format != "" {
+		for _, p := range projects {
+			icon := ""
+			if cli.Icons {
+				icon = iconMapper.Format(p.Marker, cli.Ansi)
+			}
+			displayPath := p.Path
+			if cli.Shorten {
+				displayPath = shortenHome(p.Path, homeDir)
+			}
+			values := map[string]string{
+				"%p": displayPath,
+				"%P": p.Path,
+				"%n": filepath.Base(p.Path),
+				"%m": p.Marker,
+				"%i": icon,
+				"%l": icons.FormatLabel(iconMapper.GetLabel(p.Marker), cli.Ansi),
+				"%L": icons.FormatLabel(iconMapper.GetDisplayLabel(p.Marker), cli.Ansi),
+				"%c": iconMapper.GetColor(p.Marker),
+			}
+			fmt.Println(formatOutput(cli.Format, values))
 		}
 	} else {
 		for _, p := range projects {
