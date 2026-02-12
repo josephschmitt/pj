@@ -669,14 +669,14 @@ func TestCLI_NoNested(t *testing.T) {
 	}
 }
 
-func TestCLI_MarkerLabelsLabel(t *testing.T) {
+func TestCLI_LabelsLabel(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--marker-labels", "label")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "label")
 	if err != nil {
-		t.Fatalf("pj --marker-labels label failed: %v\nStderr: %s", err, stderr)
+		t.Fatalf("pj --labels label failed: %v\nStderr: %s", err, stderr)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -692,14 +692,14 @@ func TestCLI_MarkerLabelsLabel(t *testing.T) {
 	}
 }
 
-func TestCLI_MarkerLabelsDisplayLabel(t *testing.T) {
+func TestCLI_LabelsDisplayLabel(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--marker-labels", "display-label")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "display-label")
 	if err != nil {
-		t.Fatalf("pj --marker-labels display-label failed: %v\nStderr: %s", err, stderr)
+		t.Fatalf("pj --labels display-label failed: %v\nStderr: %s", err, stderr)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -712,14 +712,14 @@ func TestCLI_MarkerLabelsDisplayLabel(t *testing.T) {
 	}
 }
 
-func TestCLI_MarkerLabelsWithIcons(t *testing.T) {
+func TestCLI_LabelsWithIcons(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--marker-labels", "label", "--icons")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "label", "--icons")
 	if err != nil {
-		t.Fatalf("pj --marker-labels --icons failed: %v\nStderr: %s", err, stderr)
+		t.Fatalf("pj --labels --icons failed: %v\nStderr: %s", err, stderr)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")

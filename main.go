@@ -30,7 +30,7 @@ type CLI struct {
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
 	Ansi       bool     `help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
-	MarkerLabels string   `help:"Show marker label in output (label or display-label)" enum:"label,display-label," default:""`
+	Labels      string   `help:"Show marker label in output (label or display-label)" enum:"label,display-label," default:""`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
@@ -247,9 +247,9 @@ func main() {
 			if cli.Shorten {
 				output = shortenHome(output, homeDir)
 			}
-			if cli.MarkerLabels != "" {
+			if cli.Labels != "" {
 				label := ""
-				switch cli.MarkerLabels {
+				switch cli.Labels {
 				case "label":
 					label = iconMapper.GetLabel(p.Marker)
 				case "display-label":
