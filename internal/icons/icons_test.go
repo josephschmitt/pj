@@ -11,7 +11,7 @@ func TestNewMapper(t *testing.T) {
 		".git": "red",
 	}
 
-	mapper := NewMapper(iconMap, colorMap)
+	mapper := NewMapper(iconMap, colorMap, nil, nil)
 
 	// Test that icons are copied (not referenced)
 	iconMap[".git"] = "different"
@@ -55,7 +55,7 @@ func TestGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mapper := NewMapper(tt.iconMap, nil)
+			mapper := NewMapper(tt.iconMap, nil, nil, nil)
 			got := mapper.Get(tt.marker)
 			if got != tt.expected {
 				t.Errorf("Get(%q) = %q, want %q", tt.marker, got, tt.expected)
@@ -67,7 +67,7 @@ func TestGet(t *testing.T) {
 func TestSet(t *testing.T) {
 	mapper := NewMapper(map[string]string{
 		".git": "",
-	}, nil)
+	}, nil, nil, nil)
 
 	// Test updating existing
 	mapper.Set(".git", "new")
@@ -84,9 +84,9 @@ func TestSet(t *testing.T) {
 
 func TestNewMapper_NilMap(t *testing.T) {
 	// Verify nil input doesn't panic
-	mapper := NewMapper(nil, nil)
+	mapper := NewMapper(nil, nil, nil, nil)
 	if mapper == nil {
-		t.Fatal("NewMapper(nil, nil) returned nil mapper")
+		t.Fatal("NewMapper(nil, nil, nil, nil) returned nil mapper")
 	}
 
 	// Should return default icon for any marker
@@ -104,7 +104,7 @@ func TestGet_EmptyMarker(t *testing.T) {
 	mapper := NewMapper(map[string]string{
 		"":    "empty-icon",
 		".git": "",
-	}, nil)
+	}, nil, nil, nil)
 
 	// Empty string marker should work
 	if got := mapper.Get(""); got != "empty-icon" {
@@ -139,7 +139,7 @@ func TestGet_UnicodeMarkers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mapper := NewMapper(map[string]string{
 				tt.marker: tt.icon,
-			}, nil)
+			}, nil, nil, nil)
 			got := mapper.Get(tt.marker)
 			if got != tt.icon {
 				t.Errorf("Get(%q) = %q, want %q", tt.marker, got, tt.icon)
@@ -183,7 +183,7 @@ func TestGetColor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mapper := NewMapper(nil, tt.colorMap)
+			mapper := NewMapper(nil, tt.colorMap, nil, nil)
 			got := mapper.GetColor(tt.marker)
 			if got != tt.expected {
 				t.Errorf("GetColor(%q) = %q, want %q", tt.marker, got, tt.expected)
@@ -195,7 +195,7 @@ func TestGetColor(t *testing.T) {
 func TestSetColor(t *testing.T) {
 	mapper := NewMapper(nil, map[string]string{
 		".git": "red",
-	})
+	}, nil, nil)
 
 	// Test updating existing
 	mapper.SetColor(".git", "cyan")
@@ -214,6 +214,7 @@ func TestFormat(t *testing.T) {
 	mapper := NewMapper(
 		map[string]string{".git": "", "go.mod": "󰟓"},
 		map[string]string{".git": "red", "go.mod": "cyan"},
+		nil, nil,
 	)
 
 	tests := []struct {
@@ -288,11 +289,88 @@ func TestFormat_ANSICodes(t *testing.T) {
 			mapper := NewMapper(
 				map[string]string{"test": "X"},
 				map[string]string{"test": tt.color},
+				nil, nil,
 			)
 			got := mapper.Format("test", true)
 			want := tt.wantCode + "X\033[39m"
 			if got != want {
 				t.Errorf("Format with color %q = %q, want %q", tt.color, got, want)
+			}
+		})
+	}
+}
+
+func TestGetLabel(t *testing.T) {
+	tests := []struct {
+		name     string
+		labelMap map[string]string
+		marker   string
+		expected string
+	}{
+		{
+			name:     "existing label",
+			labelMap: map[string]string{"go.mod": "go"},
+			marker:   "go.mod",
+			expected: "go",
+		},
+		{
+			name:     "non-existent marker falls back to marker",
+			labelMap: map[string]string{"go.mod": "go"},
+			marker:   "unknown",
+			expected: "unknown",
+		},
+		{
+			name:     "nil map falls back to marker",
+			labelMap: nil,
+			marker:   ".git",
+			expected: ".git",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mapper := NewMapper(nil, nil, tt.labelMap, nil)
+			got := mapper.GetLabel(tt.marker)
+			if got != tt.expected {
+				t.Errorf("GetLabel(%q) = %q, want %q", tt.marker, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetDisplayLabel(t *testing.T) {
+	tests := []struct {
+		name            string
+		displayLabelMap map[string]string
+		marker          string
+		expected        string
+	}{
+		{
+			name:            "existing display label",
+			displayLabelMap: map[string]string{"go.mod": "Go"},
+			marker:          "go.mod",
+			expected:        "Go",
+		},
+		{
+			name:            "non-existent marker returns empty",
+			displayLabelMap: map[string]string{"go.mod": "Go"},
+			marker:          "unknown",
+			expected:        "",
+		},
+		{
+			name:            "nil map returns empty",
+			displayLabelMap: nil,
+			marker:          ".git",
+			expected:        "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mapper := NewMapper(nil, nil, nil, tt.displayLabelMap)
+			got := mapper.GetDisplayLabel(tt.marker)
+			if got != tt.expected {
+				t.Errorf("GetDisplayLabel(%q) = %q, want %q", tt.marker, got, tt.expected)
 			}
 		})
 	}

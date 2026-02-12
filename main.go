@@ -30,7 +30,8 @@ type CLI struct {
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
 	Ansi       bool     `help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
-	Shorten    bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
+	MarkerLabels string   `help:"Show marker label in output (label or display-label)" enum:"label,display-label," default:""`
+	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
 	JSON       bool     `short:"j" help:"Output results in JSON format"`
@@ -125,7 +126,7 @@ func main() {
 		homeDir, _ = os.UserHomeDir()
 	}
 
-	iconMapper := icons.NewMapper(cfg.GetIcons(), cfg.GetColors())
+	iconMapper := icons.NewMapper(cfg.GetIcons(), cfg.GetColors(), cfg.GetLabels(), cfg.GetDisplayLabels())
 	if len(cli.IconMap) > 0 {
 		for _, mapping := range cli.IconMap {
 			parts := strings.SplitN(mapping, ":", 2)
@@ -191,13 +192,15 @@ func main() {
 
 	if cli.JSON {
 		type projectJSON struct {
-			Path        string `json:"path"`
-			DisplayPath string `json:"displayPath,omitempty"`
-			Name        string `json:"name"`
-			Marker      string `json:"marker"`
-			Icon        string `json:"icon,omitempty"`
-			AnsiIcon    string `json:"ansiIcon,omitempty"`
-			Color       string `json:"color,omitempty"`
+			Path                string `json:"path"`
+			DisplayPath         string `json:"displayPath,omitempty"`
+			Name                string `json:"name"`
+			Marker              string `json:"marker"`
+			MarkerLabel         string `json:"markerLabel"`
+			MarkerDisplayLabel  string `json:"markerDisplayLabel,omitempty"`
+			Icon                string `json:"icon,omitempty"`
+			AnsiIcon            string `json:"ansiIcon,omitempty"`
+			Color               string `json:"color,omitempty"`
 		}
 		type outputJSON struct {
 			Projects []projectJSON `json:"projects"`
@@ -220,13 +223,15 @@ func main() {
 				displayPath = shortenHome(p.Path, homeDir)
 			}
 			jsonProjects[i] = projectJSON{
-				Path:        p.Path,
-				DisplayPath: displayPath,
-				Name:        filepath.Base(p.Path),
-				Marker:      p.Marker,
-				Icon:        icon,
-				AnsiIcon:    ansiIcon,
-				Color:       color,
+				Path:               p.Path,
+				DisplayPath:        displayPath,
+				Name:               filepath.Base(p.Path),
+				Marker:             p.Marker,
+				MarkerLabel:        iconMapper.GetLabel(p.Marker),
+				MarkerDisplayLabel: iconMapper.GetDisplayLabel(p.Marker),
+				Icon:               icon,
+				AnsiIcon:           ansiIcon,
+				Color:              color,
 			}
 		}
 
@@ -241,6 +246,18 @@ func main() {
 			output := p.Path
 			if cli.Shorten {
 				output = shortenHome(output, homeDir)
+			}
+			if cli.MarkerLabels != "" {
+				label := ""
+				switch cli.MarkerLabels {
+				case "label":
+					label = iconMapper.GetLabel(p.Marker)
+				case "display-label":
+					label = iconMapper.GetDisplayLabel(p.Marker)
+				}
+				if label != "" {
+					output = fmt.Sprintf("[%s] %s", label, output)
+				}
 			}
 			if cli.Icons && !cli.Strip {
 				icon := iconMapper.Format(p.Marker, cli.Ansi)

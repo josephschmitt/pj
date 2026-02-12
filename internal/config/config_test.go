@@ -120,6 +120,56 @@ func TestDefaults(t *testing.T) {
 			t.Errorf("Priorities[%q] = %d, want %d", marker, cfg.Priorities[marker], expectedPriority)
 		}
 	}
+
+	// Check labels map is populated from RawMarkers
+	if len(cfg.Labels) == 0 {
+		t.Error("defaults() should have labels after processMarkers")
+	}
+	expectedLabels := map[string]string{
+		".git":           "git",
+		"go.mod":         "go",
+		"package.json":   "nodejs",
+		"Cargo.toml":     "rust",
+		"pyproject.toml": "python",
+		"Makefile":       "make",
+		"flake.nix":      "nix",
+		".vscode":        "vscode",
+		".idea":          "idea",
+		".fleet":         "fleet",
+		".project":       "eclipse",
+		".zed":           "zed",
+		"Dockerfile":     "docker",
+	}
+	for marker, expectedLabel := range expectedLabels {
+		if cfg.Labels[marker] != expectedLabel {
+			t.Errorf("Labels[%q] = %q, want %q", marker, cfg.Labels[marker], expectedLabel)
+		}
+	}
+
+	// Check display labels map is populated from RawMarkers
+	if len(cfg.DisplayLabels) == 0 {
+		t.Error("defaults() should have display labels after processMarkers")
+	}
+	expectedDisplayLabels := map[string]string{
+		".git":           "Git",
+		"go.mod":         "Go",
+		"package.json":   "NodeJS",
+		"Cargo.toml":     "Rust",
+		"pyproject.toml": "Python",
+		"Makefile":       "Make",
+		"flake.nix":      "Nix",
+		".vscode":        "VS Code",
+		".idea":          "IntelliJ IDEA",
+		".fleet":         "Fleet",
+		".project":       "Eclipse",
+		".zed":           "Zed",
+		"Dockerfile":     "Docker",
+	}
+	for marker, expectedDisplayLabel := range expectedDisplayLabels {
+		if cfg.DisplayLabels[marker] != expectedDisplayLabel {
+			t.Errorf("DisplayLabels[%q] = %q, want %q", marker, cfg.DisplayLabels[marker], expectedDisplayLabel)
+		}
+	}
 }
 
 func TestDefaultConfigPath(t *testing.T) {
@@ -684,6 +734,88 @@ icons:
 		// Default icons should be preserved for other markers
 		if cfg.Icons["go.mod"] != "\U000f07d3" {
 			t.Errorf("Icons[go.mod] = %q, want default icon %q", cfg.Icons["go.mod"], "\U000f07d3")
+		}
+	})
+}
+
+func TestMarkerLabels(t *testing.T) {
+	t.Run("custom label and display_label from YAML", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    label: custom-git
+    display_label: Custom Git
+  - marker: go.mod
+    label: golang
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		if cfg.Labels[".git"] != "custom-git" {
+			t.Errorf("Labels[.git] = %q, want %q", cfg.Labels[".git"], "custom-git")
+		}
+		if cfg.DisplayLabels[".git"] != "Custom Git" {
+			t.Errorf("DisplayLabels[.git] = %q, want %q", cfg.DisplayLabels[".git"], "Custom Git")
+		}
+		if cfg.Labels["go.mod"] != "golang" {
+			t.Errorf("Labels[go.mod] = %q, want %q", cfg.Labels["go.mod"], "golang")
+		}
+	})
+
+	t.Run("default labels preserved for markers not in config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.yaml")
+
+		yamlContent := `markers:
+  - marker: .git
+    label: custom-git
+`
+		if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := Load(configPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		if cfg.Labels[".git"] != "custom-git" {
+			t.Errorf("Labels[.git] = %q, want %q", cfg.Labels[".git"], "custom-git")
+		}
+		// Default labels should be preserved for other markers
+		if cfg.Labels["go.mod"] != "go" {
+			t.Errorf("Labels[go.mod] = %q, want default %q", cfg.Labels["go.mod"], "go")
+		}
+		if cfg.DisplayLabels["go.mod"] != "Go" {
+			t.Errorf("DisplayLabels[go.mod] = %q, want default %q", cfg.DisplayLabels["go.mod"], "Go")
+		}
+	})
+
+	t.Run("getters return correct maps", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		nonExistentPath := filepath.Join(tmpDir, "nonexistent.yaml")
+
+		cfg, err := Load(nonExistentPath)
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+
+		labels := cfg.GetLabels()
+		if labels["go.mod"] != "go" {
+			t.Errorf("GetLabels()[go.mod] = %q, want %q", labels["go.mod"], "go")
+		}
+
+		displayLabels := cfg.GetDisplayLabels()
+		if displayLabels["go.mod"] != "Go" {
+			t.Errorf("GetDisplayLabels()[go.mod] = %q, want %q", displayLabels["go.mod"], "Go")
 		}
 	})
 }

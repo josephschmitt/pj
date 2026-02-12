@@ -22,14 +22,16 @@ var ansiColors = map[string]int{
 	"bright-white":   97,
 }
 
-// Mapper handles icon and color mapping for project markers
+// Mapper handles icon, color, label, and display label mapping for project markers
 type Mapper struct {
-	iconMap  map[string]string
-	colorMap map[string]string
+	iconMap         map[string]string
+	colorMap        map[string]string
+	labelMap        map[string]string
+	displayLabelMap map[string]string
 }
 
-// NewMapper creates a new icon mapper with the given icon and color maps
-func NewMapper(iconMap, colorMap map[string]string) *Mapper {
+// NewMapper creates a new icon mapper with the given maps
+func NewMapper(iconMap, colorMap, labelMap, displayLabelMap map[string]string) *Mapper {
 	// Create copies to avoid mutations
 	im := make(map[string]string)
 	for k, v := range iconMap {
@@ -39,7 +41,15 @@ func NewMapper(iconMap, colorMap map[string]string) *Mapper {
 	for k, v := range colorMap {
 		cm[k] = v
 	}
-	return &Mapper{iconMap: im, colorMap: cm}
+	lm := make(map[string]string)
+	for k, v := range labelMap {
+		lm[k] = v
+	}
+	dm := make(map[string]string)
+	for k, v := range displayLabelMap {
+		dm[k] = v
+	}
+	return &Mapper{iconMap: im, colorMap: cm, labelMap: lm, displayLabelMap: dm}
 }
 
 // Get returns the icon for a given marker
@@ -67,6 +77,22 @@ func (m *Mapper) GetColor(marker string) string {
 // SetColor updates or adds a color mapping
 func (m *Mapper) SetColor(marker, color string) {
 	m.colorMap[marker] = color
+}
+
+// GetLabel returns the semantic label for a given marker, falling back to the marker itself
+func (m *Mapper) GetLabel(marker string) string {
+	if label, ok := m.labelMap[marker]; ok {
+		return label
+	}
+	return marker
+}
+
+// GetDisplayLabel returns the human-readable display label for a given marker, or empty string if not set
+func (m *Mapper) GetDisplayLabel(marker string) string {
+	if label, ok := m.displayLabelMap[marker]; ok {
+		return label
+	}
+	return ""
 }
 
 // Format returns the icon for a marker, optionally wrapped in ANSI color codes.
