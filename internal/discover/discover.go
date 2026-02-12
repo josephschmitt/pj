@@ -38,11 +38,11 @@ func New(cfg *config.Config, verbose bool) *Discoverer {
 var markerSpecificity = map[string]int{
 	".git":           1,
 	"Makefile":       1,
-	"package.json":   10,
+	"package.json":   7,
 	"Cargo.toml":     10,
 	"go.mod":         10,
 	"pyproject.toml": 10,
-	"flake.nix":      10,
+	"flake.nix":      3,
 	"pom.xml":        10,
 	"build.gradle":   10,
 	"CMakeLists.txt": 10,

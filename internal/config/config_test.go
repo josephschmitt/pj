@@ -104,11 +104,11 @@ func TestDefaults(t *testing.T) {
 	expectedPriorities := map[string]int{
 		".git":            1,
 		"go.mod":          10,
-		"package.json":    10,
+		"package.json":    7,
 		"Cargo.toml":      10,
 		"pyproject.toml":  10,
 		"Makefile":        1,
-		"flake.nix":       10,
+		"flake.nix":       3,
 		".vscode":         5,
 		".idea":           5,
 		".fleet":          5,
@@ -998,8 +998,8 @@ icons:
 		}
 
 		// Default priorities should be preserved for markers not in config
-		if cfg.Priorities["package.json"] != 10 {
-			t.Errorf("Priorities[package.json] = %d, want 10 (default)", cfg.Priorities["package.json"])
+		if cfg.Priorities["package.json"] != 7 {
+			t.Errorf("Priorities[package.json] = %d, want 7 (default)", cfg.Priorities["package.json"])
 		}
 	})
 
