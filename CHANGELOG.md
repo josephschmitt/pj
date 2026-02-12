@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0](https://github.com/josephschmitt/pj/compare/v1.11.0...v1.12.0) (2026-02-12)
+
+
+### Features
+
+* add --format flag for custom output templating ([#36](https://github.com/josephschmitt/pj/issues/36)) ([0a5f041](https://github.com/josephschmitt/pj/commit/0a5f0412f87766da0e6c2d2693758a58e29563e3))
+* add label and displayLabel fields to markers ([#35](https://github.com/josephschmitt/pj/issues/35)) ([fa44cc7](https://github.com/josephschmitt/pj/commit/fa44cc74e237c08f029ad4ee4ca92a7e68ca868e))
+
 ## [1.11.0](https://github.com/josephschmitt/pj/compare/v1.10.0...v1.11.0) (2026-02-08)
 
 
