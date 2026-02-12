@@ -532,6 +532,7 @@ func defaults() *Config {
 			{Marker: ".fleet", Label: "fleet", DisplayLabel: "Fleet", Color: "magenta", HasColor: true, Priority: 5, HasPriority: true},
 			{Marker: ".project", Label: "eclipse", DisplayLabel: "Eclipse", Icon: "\ue79e", HasIcon: true, Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
 			{Marker: ".zed", Label: "zed", DisplayLabel: "Zed", Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
+			{Marker: "tsconfig.json", Label: "typescript", DisplayLabel: "TypeScript", Icon: "\ue628", HasIcon: true, Color: "blue", HasColor: true, Priority: 10, HasPriority: true},
 			{Marker: "Dockerfile", Label: "docker", DisplayLabel: "Docker", Icon: "\ue7b0", HasIcon: true, Color: "cyan", HasColor: true, Priority: 7, HasPriority: true},
 		},
 		MaxDepth: 3,

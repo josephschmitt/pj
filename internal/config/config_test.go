@@ -50,6 +50,7 @@ func TestDefaults(t *testing.T) {
 		".fleet",
 		".project",
 		".zed",
+		"tsconfig.json",
 		"Dockerfile",
 	}
 	if len(cfg.RawMarkers) != len(expectedMarkers) {
@@ -101,19 +102,20 @@ func TestDefaults(t *testing.T) {
 	}
 	// Verify specific priorities
 	expectedPriorities := map[string]int{
-		".git":           1,
-		"go.mod":         10,
-		"package.json":   10,
-		"Cargo.toml":     10,
-		"pyproject.toml": 10,
-		"Makefile":       1,
-		"flake.nix":      10,
-		".vscode":        5,
-		".idea":          5,
-		".fleet":         5,
-		".project":       5,
-		".zed":           5,
-		"Dockerfile":     7,
+		".git":            1,
+		"go.mod":          10,
+		"package.json":    10,
+		"Cargo.toml":      10,
+		"pyproject.toml":  10,
+		"Makefile":        1,
+		"flake.nix":       10,
+		".vscode":         5,
+		".idea":           5,
+		".fleet":          5,
+		".project":        5,
+		".zed":            5,
+		"tsconfig.json":   10,
+		"Dockerfile":      7,
 	}
 	for marker, expectedPriority := range expectedPriorities {
 		if cfg.Priorities[marker] != expectedPriority {
@@ -126,19 +128,20 @@ func TestDefaults(t *testing.T) {
 		t.Error("defaults() should have labels after processMarkers")
 	}
 	expectedLabels := map[string]string{
-		".git":           "git",
-		"go.mod":         "go",
-		"package.json":   "nodejs",
-		"Cargo.toml":     "rust",
-		"pyproject.toml": "python",
-		"Makefile":       "make",
-		"flake.nix":      "nix",
-		".vscode":        "vscode",
-		".idea":          "idea",
-		".fleet":         "fleet",
-		".project":       "eclipse",
-		".zed":           "zed",
-		"Dockerfile":     "docker",
+		".git":            "git",
+		"go.mod":          "go",
+		"package.json":    "nodejs",
+		"Cargo.toml":      "rust",
+		"pyproject.toml":  "python",
+		"Makefile":        "make",
+		"flake.nix":       "nix",
+		".vscode":         "vscode",
+		".idea":           "idea",
+		".fleet":          "fleet",
+		".project":        "eclipse",
+		".zed":            "zed",
+		"tsconfig.json":   "typescript",
+		"Dockerfile":      "docker",
 	}
 	for marker, expectedLabel := range expectedLabels {
 		if cfg.Labels[marker] != expectedLabel {
@@ -151,19 +154,20 @@ func TestDefaults(t *testing.T) {
 		t.Error("defaults() should have display labels after processMarkers")
 	}
 	expectedDisplayLabels := map[string]string{
-		".git":           "Git",
-		"go.mod":         "Go",
-		"package.json":   "NodeJS",
-		"Cargo.toml":     "Rust",
-		"pyproject.toml": "Python",
-		"Makefile":       "Make",
-		"flake.nix":      "Nix",
-		".vscode":        "VS Code",
-		".idea":          "IntelliJ IDEA",
-		".fleet":         "Fleet",
-		".project":       "Eclipse",
-		".zed":           "Zed",
-		"Dockerfile":     "Docker",
+		".git":            "Git",
+		"go.mod":          "Go",
+		"package.json":    "NodeJS",
+		"Cargo.toml":      "Rust",
+		"pyproject.toml":  "Python",
+		"Makefile":        "Make",
+		"flake.nix":       "Nix",
+		".vscode":         "VS Code",
+		".idea":           "IntelliJ IDEA",
+		".fleet":          "Fleet",
+		".project":        "Eclipse",
+		".zed":            "Zed",
+		"tsconfig.json":   "TypeScript",
+		"Dockerfile":      "Docker",
 	}
 	for marker, expectedDisplayLabel := range expectedDisplayLabels {
 		if cfg.DisplayLabels[marker] != expectedDisplayLabel {
@@ -544,8 +548,8 @@ func TestMarkerConfigFormats(t *testing.T) {
 		}
 
 		// Check that markers merge with defaults (13 defaults, these 3 overlap)
-		if len(cfg.Markers) != 13 {
-			t.Errorf("Markers length = %d, want 13 (merged with defaults)", len(cfg.Markers))
+		if len(cfg.Markers) != 14 {
+			t.Errorf("Markers length = %d, want 14 (merged with defaults)", len(cfg.Markers))
 		}
 
 		// Check icons are populated from new format (overriding defaults)
@@ -583,8 +587,8 @@ icons:
 		}
 
 		// Check that markers merge with defaults
-		if len(cfg.Markers) != 13 {
-			t.Errorf("Markers length = %d, want 13 (merged with defaults)", len(cfg.Markers))
+		if len(cfg.Markers) != 14 {
+			t.Errorf("Markers length = %d, want 14 (merged with defaults)", len(cfg.Markers))
 		}
 
 		// Check icons from old format
@@ -648,8 +652,8 @@ icons:
 		}
 
 		// Check that markers merge with defaults
-		if len(cfg.Markers) != 13 {
-			t.Errorf("Markers length = %d, want 13 (merged with defaults)", len(cfg.Markers))
+		if len(cfg.Markers) != 14 {
+			t.Errorf("Markers length = %d, want 14 (merged with defaults)", len(cfg.Markers))
 		}
 
 		// go.mod should have the custom icon from config
@@ -1043,19 +1047,20 @@ func TestColorConfig(t *testing.T) {
 		}
 
 		expectedColors := map[string]string{
-			".git":           "bright-red",
-			"go.mod":         "cyan",
-			"package.json":   "green",
-			"Cargo.toml":     "red",
-			"pyproject.toml": "yellow",
-			"Makefile":       "white",
-			"flake.nix":      "bright-blue",
-			".vscode":        "blue",
-			".idea":          "magenta",
-			".fleet":         "magenta",
-			".project":       "blue",
-			".zed":           "blue",
-			"Dockerfile":     "cyan",
+			".git":            "bright-red",
+			"go.mod":          "cyan",
+			"package.json":    "green",
+			"Cargo.toml":      "red",
+			"pyproject.toml":  "yellow",
+			"Makefile":        "white",
+			"flake.nix":       "bright-blue",
+			".vscode":         "blue",
+			".idea":           "magenta",
+			".fleet":          "magenta",
+			".project":        "blue",
+			".zed":            "blue",
+			"tsconfig.json":   "blue",
+			"Dockerfile":      "cyan",
 		}
 
 		colors := cfg.GetColors()
