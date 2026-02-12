@@ -277,7 +277,7 @@ func main() {
 					label = iconMapper.GetDisplayLabel(p.Marker)
 				}
 				if label != "" {
-					output = fmt.Sprintf("%s %s", label, output)
+					output = fmt.Sprintf("%s %s", icons.FormatLabel(label, cli.Ansi), output)
 				}
 			}
 			if cli.Icons && !cli.Strip {

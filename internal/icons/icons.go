@@ -110,3 +110,11 @@ func (m *Mapper) Format(marker string, ansi bool) string {
 	}
 	return fmt.Sprintf("\033[%dm%s\033[39m", code, icon)
 }
+
+func FormatLabel(label string, ansi bool) string {
+	if !ansi || label == "" {
+		return label
+	}
+	code := ansiColors["bright-black"]
+	return fmt.Sprintf("\033[%dm%s\033[39m", code, label)
+}

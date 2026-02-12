@@ -375,3 +375,46 @@ func TestGetDisplayLabel(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatLabel(t *testing.T) {
+	tests := []struct {
+		name     string
+		label    string
+		ansi     bool
+		expected string
+	}{
+		{
+			name:     "no ansi",
+			label:    "go",
+			ansi:     false,
+			expected: "go",
+		},
+		{
+			name:     "with ansi",
+			label:    "go",
+			ansi:     true,
+			expected: "\033[90mgo\033[39m",
+		},
+		{
+			name:     "empty label no ansi",
+			label:    "",
+			ansi:     false,
+			expected: "",
+		},
+		{
+			name:     "empty label with ansi",
+			label:    "",
+			ansi:     true,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatLabel(tt.label, tt.ansi)
+			if got != tt.expected {
+				t.Errorf("FormatLabel(%q, %v) = %q, want %q", tt.label, tt.ansi, got, tt.expected)
+			}
+		})
+	}
+}
