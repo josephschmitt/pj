@@ -668,6 +668,98 @@ func TestCLI_NoNested(t *testing.T) {
 		t.Error("Output should not contain pkg1 with --no-nested")
 	}
 }
+
+func TestCLI_LabelsDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	// --labels without a value should default to "label"
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels")
+	if err != nil {
+		t.Fatalf("pj --labels (no value) failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	if !strings.HasPrefix(lines[0], "go ") {
+		t.Errorf("Output should start with 'go ' label, got: %s", lines[0])
+	}
+	if !strings.HasSuffix(lines[0], "go-project") {
+		t.Errorf("Output should end with project name, got: %s", lines[0])
+	}
+}
+
+func TestCLI_LabelsLabel(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "label")
+	if err != nil {
+		t.Fatalf("pj --labels label failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	if !strings.HasPrefix(lines[0], "go ") {
+		t.Errorf("Output should start with 'go ' label, got: %s", lines[0])
+	}
+	if !strings.HasSuffix(lines[0], "go-project") {
+		t.Errorf("Output should end with project name, got: %s", lines[0])
+	}
+}
+
+func TestCLI_LabelsDisplay(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "display")
+	if err != nil {
+		t.Fatalf("pj --labels display failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	if !strings.HasPrefix(lines[0], "Go ") {
+		t.Errorf("Output should start with 'Go ' label, got: %s", lines[0])
+	}
+}
+
+func TestCLI_LabelsWithIcons(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "label", "--icons")
+	if err != nil {
+		t.Fatalf("pj --labels --icons failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	// Should have both icon and label (label is raw, no brackets)
+	if !strings.Contains(lines[0], "go ") {
+		t.Errorf("Output should contain 'go' label, got: %s", lines[0])
+	}
+	if !strings.HasSuffix(lines[0], "go-project") {
+		t.Errorf("Output should end with project name, got: %s", lines[0])
+	}
+}
+
 func TestCLI_JSONOutput(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -684,10 +776,12 @@ func TestCLI_JSONOutput(t *testing.T) {
 	// Parse JSON output
 	var result struct {
 		Projects []struct {
-			Path   string `json:"path"`
-			Name   string `json:"name"`
-			Marker string `json:"marker"`
-			Icon   string `json:"icon,omitempty"`
+			Path               string `json:"path"`
+			Name               string `json:"name"`
+			Marker             string `json:"marker"`
+			MarkerLabel        string `json:"markerLabel"`
+			MarkerDisplayLabel string `json:"markerDisplayLabel,omitempty"`
+			Icon               string `json:"icon,omitempty"`
 		} `json:"projects"`
 	}
 
@@ -711,21 +805,41 @@ func TestCLI_JSONOutput(t *testing.T) {
 		if proj.Marker == "" {
 			t.Errorf("Project %d missing marker field", i)
 		}
+		if proj.MarkerLabel == "" {
+			t.Errorf("Project %d missing markerLabel field", i)
+		}
 		if !strings.HasPrefix(proj.Path, tmpDir) {
 			t.Errorf("Project %d path should start with tmpDir", i)
 		}
 	}
 
-	// Verify specific project markers
-	foundMarkers := make(map[string]bool)
+	// Verify specific project markers and their labels
+	foundLabels := make(map[string]string)
+	foundDisplayLabels := make(map[string]string)
 	for _, proj := range result.Projects {
-		foundMarkers[proj.Marker] = true
+		foundLabels[proj.Marker] = proj.MarkerLabel
+		foundDisplayLabels[proj.Marker] = proj.MarkerDisplayLabel
 	}
 
-	expectedMarkers := []string{"go.mod", "package.json", "Cargo.toml"}
-	for _, marker := range expectedMarkers {
-		if !foundMarkers[marker] {
-			t.Errorf("Expected to find project with marker %s", marker)
+	expectedMarkerLabels := map[string]string{
+		"go.mod":       "go",
+		"package.json": "nodejs",
+		"Cargo.toml":   "rust",
+	}
+	for marker, expectedLabel := range expectedMarkerLabels {
+		if foundLabels[marker] != expectedLabel {
+			t.Errorf("MarkerLabel for %s = %q, want %q", marker, foundLabels[marker], expectedLabel)
+		}
+	}
+
+	expectedDisplayLabels := map[string]string{
+		"go.mod":       "Go",
+		"package.json": "NodeJS",
+		"Cargo.toml":   "Rust",
+	}
+	for marker, expectedDisplayLabel := range expectedDisplayLabels {
+		if foundDisplayLabels[marker] != expectedDisplayLabel {
+			t.Errorf("MarkerDisplayLabel for %s = %q, want %q", marker, foundDisplayLabels[marker], expectedDisplayLabel)
 		}
 	}
 }
@@ -783,6 +897,16 @@ func TestCLI_JSONOutputWithIcons(t *testing.T) {
 	// Verify name is correct
 	if proj.Name != "go-project" {
 		t.Errorf("Expected name to be go-project, got %s", proj.Name)
+	}
+
+	// Verify markerLabel is always present in JSON (even raw access)
+	var rawResult map[string][]map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &rawResult); err != nil {
+		t.Fatalf("Failed to parse raw JSON output: %v", err)
+	}
+	rawProj := rawResult["projects"][0]
+	if _, exists := rawProj["markerLabel"]; !exists {
+		t.Error("markerLabel field should always be present in JSON output")
 	}
 }
 

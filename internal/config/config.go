@@ -13,6 +13,8 @@ import (
 // MarkerConfig represents a single marker with optional icon, color, and priority (new format)
 type MarkerConfig struct {
 	Marker      string `yaml:"marker"`
+	Label        string `yaml:"label,omitempty"`
+	DisplayLabel string `yaml:"display_label,omitempty"`
 	Icon        string `yaml:"icon,omitempty"`
 	Color       string `yaml:"color,omitempty"`
 	Priority    int    `yaml:"priority,omitempty"`
@@ -87,6 +89,11 @@ type Config struct {
 	// Priorities maps marker names to their priority values (derived from RawMarkers)
 	Priorities map[string]int `yaml:"-"`
 
+	// Labels maps marker names to their semantic labels (derived from RawMarkers)
+	Labels map[string]string `yaml:"-"`
+	// DisplayLabels maps marker names to their human-readable display labels (derived from RawMarkers)
+	DisplayLabels map[string]string `yaml:"-"`
+
 	// ExactMarkers contains markers without glob patterns (checked via os.Stat)
 	ExactMarkers []string `yaml:"-"`
 	// PatternMarkers contains markers with glob patterns (checked via directory listing)
@@ -115,6 +122,16 @@ func (c *Config) GetPriorities() map[string]int {
 		m[k] = v
 	}
 	return m
+}
+
+// GetLabels returns the marker label map for use by the application.
+func (c *Config) GetLabels() map[string]string {
+	return c.Labels
+}
+
+// GetDisplayLabels returns the marker display label map for use by the application.
+func (c *Config) GetDisplayLabels() map[string]string {
+	return c.DisplayLabels
 }
 
 // EnsureMarkerCategories ensures ExactMarkers and PatternMarkers are populated from Markers.
@@ -156,6 +173,8 @@ func LoadWithVerbose(configPath string, verbose bool) (*Config, error) {
 	defaultIcons := cfg.Icons
 	defaultColors := cfg.Colors
 	defaultPriorities := cfg.Priorities
+	defaultLabels := cfg.Labels
+	defaultDisplayLabels := cfg.DisplayLabels
 	defaultRawMarkers := cfg.RawMarkers
 
 	if configPath == "" {
@@ -191,7 +210,7 @@ func LoadWithVerbose(configPath string, verbose bool) (*Config, error) {
 	yamlHadMarkers := cfg.RawMarkers != nil
 	cfg.RawMarkers = mergeMarkers(defaultRawMarkers, cfg.RawMarkers)
 
-	cfg.processMarkersWithDefaults(defaultIcons, defaultColors, defaultPriorities, yamlHadMarkers)
+	cfg.processMarkersWithDefaults(defaultIcons, defaultColors, defaultPriorities, defaultLabels, defaultDisplayLabels, yamlHadMarkers)
 	cfg.emitDeprecationWarnings(verbose)
 
 	return cfg, nil
@@ -237,21 +256,39 @@ func (c *Config) processMarkers() {
 			c.Priorities[mc.Marker] = mc.Priority
 		}
 	}
+	// Build labels from RawMarkers for defaults
+	c.Labels = make(map[string]string)
+	for _, mc := range c.RawMarkers {
+		if mc.Label != "" {
+			c.Labels[mc.Marker] = mc.Label
+		}
+	}
+	// Build display labels from RawMarkers for defaults
+	c.DisplayLabels = make(map[string]string)
+	for _, mc := range c.RawMarkers {
+		if mc.DisplayLabel != "" {
+			c.DisplayLabels[mc.Marker] = mc.DisplayLabel
+		}
+	}
 }
 
-// processMarkersWithDefaults builds Markers/Icons/Colors/Priorities, merging with defaults
+// processMarkersWithDefaults builds Markers/Icons/Colors/Priorities/Labels/DisplayLabels, merging with defaults
 // yamlHadMarkers indicates whether the YAML config had a markers field
-func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defaultColors map[string]string, defaultPriorities map[string]int, yamlHadMarkers bool) {
+func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defaultColors map[string]string, defaultPriorities map[string]int, defaultLabels map[string]string, defaultDisplayLabels map[string]string, yamlHadMarkers bool) {
 	c.Markers = make([]string, len(c.RawMarkers))
 	c.ExactMarkers = make([]string, 0, len(c.RawMarkers))
 	c.PatternMarkers = make([]string, 0)
 	newIcons := make(map[string]string)
 	newColors := make(map[string]string)
 	newPriorities := make(map[string]int)
+	newLabels := make(map[string]string)
+	newDisplayLabels := make(map[string]string)
 	// Track markers that explicitly set icons/colors/priorities (even to empty/zero)
 	explicitIcons := make(map[string]bool)
 	explicitColors := make(map[string]bool)
 	explicitPriorities := make(map[string]bool)
+	explicitLabels := make(map[string]bool)
+	explicitDisplayLabels := make(map[string]bool)
 
 	for i, mc := range c.RawMarkers {
 		c.Markers[i] = mc.Marker
@@ -275,6 +312,14 @@ func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defa
 			if mc.HasPriority {
 				newPriorities[mc.Marker] = mc.Priority
 				explicitPriorities[mc.Marker] = true
+			}
+			if mc.Label != "" {
+				newLabels[mc.Marker] = mc.Label
+				explicitLabels[mc.Marker] = true
+			}
+			if mc.DisplayLabel != "" {
+				newDisplayLabels[mc.Marker] = mc.DisplayLabel
+				explicitDisplayLabels[mc.Marker] = true
 			}
 		}
 	}
@@ -323,6 +368,30 @@ func (c *Config) processMarkersWithDefaults(defaultIcons map[string]string, defa
 		finalPriorities[k] = v
 	}
 	c.Priorities = finalPriorities
+
+	// Merge labels: defaults -> new format (later wins)
+	finalLabels := make(map[string]string)
+	for k, v := range defaultLabels {
+		if !explicitLabels[k] {
+			finalLabels[k] = v
+		}
+	}
+	for k, v := range newLabels {
+		finalLabels[k] = v
+	}
+	c.Labels = finalLabels
+
+	// Merge display labels: defaults -> new format (later wins)
+	finalDisplayLabels := make(map[string]string)
+	for k, v := range defaultDisplayLabels {
+		if !explicitDisplayLabels[k] {
+			finalDisplayLabels[k] = v
+		}
+	}
+	for k, v := range newDisplayLabels {
+		finalDisplayLabels[k] = v
+	}
+	c.DisplayLabels = finalDisplayLabels
 }
 
 // mergeMarkers combines default markers with YAML markers
@@ -451,19 +520,19 @@ func defaults() *Config {
 			filepath.Join(home, "development"),
 		},
 		RawMarkers: MarkerList{
-			{Marker: ".git", Icon: "\ue65d", HasIcon: true, Color: "bright-red", HasColor: true, Priority: 1, HasPriority: true},
-			{Marker: "go.mod", Icon: "\U000f07d3", HasIcon: true, Color: "cyan", HasColor: true, Priority: 10, HasPriority: true},
-			{Marker: "package.json", Icon: "\U000f0399", HasIcon: true, Color: "green", HasColor: true, Priority: 10, HasPriority: true},
-			{Marker: "Cargo.toml", Icon: "\ue68b", HasIcon: true, Color: "red", HasColor: true, Priority: 10, HasPriority: true},
-			{Marker: "pyproject.toml", Icon: "\ue606", HasIcon: true, Color: "yellow", HasColor: true, Priority: 10, HasPriority: true},
-			{Marker: "Makefile", Icon: "\ue673", HasIcon: true, Color: "white", HasColor: true, Priority: 1, HasPriority: true},
-			{Marker: "flake.nix", Icon: "\ue843", HasIcon: true, Color: "bright-blue", HasColor: true, Priority: 10, HasPriority: true},
-			{Marker: ".vscode", Icon: "\U000f0a1e", HasIcon: true, Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
-			{Marker: ".idea", Icon: "\ue7b5", HasIcon: true, Color: "magenta", HasColor: true, Priority: 5, HasPriority: true},
-			{Marker: ".fleet", Color: "magenta", HasColor: true, Priority: 5, HasPriority: true},
-			{Marker: ".project", Icon: "\ue79e", HasIcon: true, Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
-			{Marker: ".zed", Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
-			{Marker: "Dockerfile", Icon: "\ue7b0", HasIcon: true, Color: "cyan", HasColor: true, Priority: 7, HasPriority: true},
+			{Marker: ".git", Label: "git", DisplayLabel: "Git", Icon: "\ue65d", HasIcon: true, Color: "bright-red", HasColor: true, Priority: 1, HasPriority: true},
+			{Marker: "go.mod", Label: "go", DisplayLabel: "Go", Icon: "\U000f07d3", HasIcon: true, Color: "cyan", HasColor: true, Priority: 10, HasPriority: true},
+			{Marker: "package.json", Label: "nodejs", DisplayLabel: "NodeJS", Icon: "\U000f0399", HasIcon: true, Color: "green", HasColor: true, Priority: 10, HasPriority: true},
+			{Marker: "Cargo.toml", Label: "rust", DisplayLabel: "Rust", Icon: "\ue68b", HasIcon: true, Color: "red", HasColor: true, Priority: 10, HasPriority: true},
+			{Marker: "pyproject.toml", Label: "python", DisplayLabel: "Python", Icon: "\ue606", HasIcon: true, Color: "yellow", HasColor: true, Priority: 10, HasPriority: true},
+			{Marker: "Makefile", Label: "make", DisplayLabel: "Make", Icon: "\ue673", HasIcon: true, Color: "white", HasColor: true, Priority: 1, HasPriority: true},
+			{Marker: "flake.nix", Label: "nix", DisplayLabel: "Nix", Icon: "\ue843", HasIcon: true, Color: "bright-blue", HasColor: true, Priority: 10, HasPriority: true},
+			{Marker: ".vscode", Label: "vscode", DisplayLabel: "VS Code", Icon: "\U000f0a1e", HasIcon: true, Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
+			{Marker: ".idea", Label: "idea", DisplayLabel: "IntelliJ IDEA", Icon: "\ue7b5", HasIcon: true, Color: "magenta", HasColor: true, Priority: 5, HasPriority: true},
+			{Marker: ".fleet", Label: "fleet", DisplayLabel: "Fleet", Color: "magenta", HasColor: true, Priority: 5, HasPriority: true},
+			{Marker: ".project", Label: "eclipse", DisplayLabel: "Eclipse", Icon: "\ue79e", HasIcon: true, Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
+			{Marker: ".zed", Label: "zed", DisplayLabel: "Zed", Color: "blue", HasColor: true, Priority: 5, HasPriority: true},
+			{Marker: "Dockerfile", Label: "docker", DisplayLabel: "Docker", Icon: "\ue7b0", HasIcon: true, Color: "cyan", HasColor: true, Priority: 7, HasPriority: true},
 		},
 		MaxDepth: 3,
 		Excludes: []string{
@@ -475,10 +544,12 @@ func defaults() *Config {
 			"dist",
 			"build",
 		},
-		CacheTTL: 300, // 5 minutes
-		Nested:   true,
-		Icons:    make(map[string]string),
-		Colors:   make(map[string]string),
+		CacheTTL:     300, // 5 minutes
+		Nested:       true,
+		Icons:        make(map[string]string),
+		Colors:       make(map[string]string),
+		Labels:        make(map[string]string),
+		DisplayLabels: make(map[string]string),
 	}
 }
 
