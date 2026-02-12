@@ -15,6 +15,7 @@
 - **Smart Caching**: Caches results for instant subsequent searches (5-minute TTL)
 - **Flexible Markers**: Detects projects by `.git`, `go.mod`, `package.json`, `Cargo.toml`, and more
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
+- **Label Support**: Show marker labels like `[go]` or `[Go]` alongside project paths
 - **ANSI Color Support**: Colorize icons with ANSI codes for terminal tools like `fzf` and `television`
 - **Unix Pipeline Support**: Pipe paths in and results out - works seamlessly in command chains
 - **Configurable**: YAML configuration file with sensible defaults
@@ -178,6 +179,12 @@ pj --icons
 # Show projects with colored icons
 pj --icons --ansi
 
+# Show projects with labels
+pj --labels
+
+# Show projects with display labels
+pj --labels display
+
 # Force fresh search (skip cache)
 pj --no-cache
 
@@ -198,7 +205,8 @@ pj --version
 | `--exclude PATTERN` | `-e` | Exclude pattern (repeatable) |
 | `--max-depth N` | `-d` | Maximum search depth |
 | `--icons` | | Show marker-based icons |
-| `--ansi` | | Colorize icons with ANSI codes |
+| `--ansi` | `-a` | Colorize icons with ANSI codes |
+| `--labels [VALUE]` | `-l` | Show marker labels (`label` or `display`, defaults to `label`) |
 | `--strip` | | Strip icons from output |
 | `--icon-map MARKER:ICON` | | Override icon mapping |
 | `--color-map MARKER:COLOR` | | Override icon color |
@@ -224,6 +232,15 @@ pj --icons --icon-map "go.mod:🐹"
 
 # Colored icons with per-marker override
 pj --icons --ansi --color-map "go.mod:cyan"
+
+# Show labels (e.g., [go], [nodejs], [git])
+pj --labels
+
+# Show display labels (e.g., [Go], [NodeJS], [Git])
+pj --labels display
+
+# Combine icons, labels, and color
+pj --icons -la
 
 # Verbose output for debugging
 pj -v
@@ -312,13 +329,16 @@ search_paths:
   - ~/development
   - ~/work
 
-# Files/directories that mark a project (with optional icons, colors, and priority)
-# Each marker can be a simple string or an object with marker, icon, color, and priority fields
+# Files/directories that mark a project (with optional icons, colors, labels, and priority)
+# Each marker can be a simple string or an object with marker, icon, color, label,
+# displayLabel, and priority fields
 # Priority determines which marker is used when multiple exist in the same directory
 # Higher priority wins. Default priorities: language=10, infrastructure=7, IDE=5, generic=1
 # Glob patterns are supported: *.csproj, *.sln, test_*.yml, etc.
 # Color is used with --ansi flag. Available colors: black, red, green, yellow, blue,
 # magenta, cyan, white, and bright- variants. Default: blue
+# Labels are used with --labels flag. label is machine-friendly (e.g., "go"),
+# displayLabel is human-friendly (e.g., "Go"). All built-in markers have defaults.
 markers:
   - marker: .git
     icon: ""      # \ue65d - Git icon
@@ -339,7 +359,7 @@ markers:
   - marker: .idea
     icon: ""      # \ue7b5 - IntelliJ icon
   - marker: build.gradle
-    # icon, color, and priority are optional - omit for defaults
+    # icon, color, label, displayLabel, and priority are optional - omit for defaults
   - marker: "*.csproj"       # Glob patterns for variable file names
     icon: "󰪮"
   - marker: "*.sln"
