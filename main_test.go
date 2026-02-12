@@ -669,14 +669,15 @@ func TestCLI_NoNested(t *testing.T) {
 	}
 }
 
-func TestCLI_LabelsLabel(t *testing.T) {
+func TestCLI_LabelDefault(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "label")
+	// --label without a value should default to "label"
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--label")
 	if err != nil {
-		t.Fatalf("pj --labels label failed: %v\nStderr: %s", err, stderr)
+		t.Fatalf("pj --label (no value) failed: %v\nStderr: %s", err, stderr)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -692,14 +693,37 @@ func TestCLI_LabelsLabel(t *testing.T) {
 	}
 }
 
-func TestCLI_LabelsDisplayLabel(t *testing.T) {
+func TestCLI_LabelLabel(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "display-label")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--label", "label")
 	if err != nil {
-		t.Fatalf("pj --labels display-label failed: %v\nStderr: %s", err, stderr)
+		t.Fatalf("pj --label label failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	if !strings.Contains(lines[0], "[go]") {
+		t.Errorf("Output should contain [go] label, got: %s", lines[0])
+	}
+	if !strings.HasSuffix(lines[0], "go-project") {
+		t.Errorf("Output should end with project name, got: %s", lines[0])
+	}
+}
+
+func TestCLI_LabelDisplay(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--label", "display")
+	if err != nil {
+		t.Fatalf("pj --label display failed: %v\nStderr: %s", err, stderr)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")
@@ -712,14 +736,14 @@ func TestCLI_LabelsDisplayLabel(t *testing.T) {
 	}
 }
 
-func TestCLI_LabelsWithIcons(t *testing.T) {
+func TestCLI_LabelWithIcons(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--labels", "label", "--icons")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--label", "label", "--icons")
 	if err != nil {
-		t.Fatalf("pj --labels --icons failed: %v\nStderr: %s", err, stderr)
+		t.Fatalf("pj --label --icons failed: %v\nStderr: %s", err, stderr)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")

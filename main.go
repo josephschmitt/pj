@@ -17,6 +17,27 @@ import (
 
 var version = "dev"
 
+// LabelFlag is a custom flag type that defaults to "label" when --label is
+// passed without a value, and accepts "label" or "display" as explicit values.
+type LabelFlag string
+
+func (l *LabelFlag) Decode(ctx *kong.DecodeContext) error {
+	token := ctx.Scan.Peek()
+	if token.IsValue() {
+		ctx.Scan.Pop()
+		val := token.String()
+		switch val {
+		case "label", "display":
+			*l = LabelFlag(val)
+		default:
+			return fmt.Errorf("--label must be 'label' or 'display', got %q", val)
+		}
+	} else {
+		*l = "label"
+	}
+	return nil
+}
+
 type CLI struct {
 	Config     string   `short:"c" help:"Config file path" type:"path"`
 	Path       []string `short:"p" help:"Add search path (repeatable)"`
@@ -30,7 +51,7 @@ type CLI struct {
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
 	Ansi       bool     `help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
-	Labels      string   `help:"Show marker label in output (label or display-label)" enum:"label,display-label," default:""`
+	Label       LabelFlag `help:"Show marker label in output (default: label, or display)"`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
@@ -247,12 +268,12 @@ func main() {
 			if cli.Shorten {
 				output = shortenHome(output, homeDir)
 			}
-			if cli.Labels != "" {
+			if cli.Label != "" {
 				label := ""
-				switch cli.Labels {
+				switch string(cli.Label) {
 				case "label":
 					label = iconMapper.GetLabel(p.Marker)
-				case "display-label":
+				case "display":
 					label = iconMapper.GetDisplayLabel(p.Marker)
 				}
 				if label != "" {
