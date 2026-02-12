@@ -115,6 +115,5 @@ func FormatLabel(label string, ansi bool) string {
 	if !ansi || label == "" {
 		return label
 	}
-	code := ansiColors["bright-black"]
-	return fmt.Sprintf("\033[%dm%s\033[39m", code, label)
+	return fmt.Sprintf("\033[2m%s\033[22m", label)
 }

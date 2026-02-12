@@ -393,7 +393,7 @@ func TestFormatLabel(t *testing.T) {
 			name:     "with ansi",
 			label:    "go",
 			ansi:     true,
-			expected: "\033[90mgo\033[39m",
+			expected: "\033[2mgo\033[22m",
 		},
 		{
 			name:     "empty label no ansi",
