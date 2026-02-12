@@ -1352,8 +1352,8 @@ func TestFormatOutput(t *testing.T) {
 		},
 		{
 			name:     "all placeholders",
-			format:   "%i [%l] %d %n %m %c %p %P",
-			values:   map[string]string{"%i": "X", "%l": "go", "%d": "Go", "%n": "myproj", "%m": "go.mod", "%c": "cyan", "%p": "~/dev/myproj", "%P": "/home/user/dev/myproj"},
+			format:   "%i [%l] %L %n %m %c %p %P",
+			values:   map[string]string{"%i": "X", "%l": "go", "%L": "Go", "%n": "myproj", "%m": "go.mod", "%c": "cyan", "%p": "~/dev/myproj", "%P": "/home/user/dev/myproj"},
 			expected: "X [go] Go myproj go.mod cyan ~/dev/myproj /home/user/dev/myproj",
 		},
 		{
@@ -1361,6 +1361,12 @@ func TestFormatOutput(t *testing.T) {
 			format:   "%P %p",
 			values:   map[string]string{"%P": "/full/path", "%p": "~/short"},
 			expected: "/full/path ~/short",
+		},
+		{
+			name:     "L before l ordering",
+			format:   "%L %l",
+			values:   map[string]string{"%L": "Go", "%l": "go"},
+			expected: "Go go",
 		},
 		{
 			name:     "no placeholders",
@@ -1515,7 +1521,7 @@ func TestCLI_FormatDisplayLabel(t *testing.T) {
 	tmpDir := t.TempDir()
 	createTestProject(t, tmpDir, "go-project", "go.mod")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%d: %p")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%L: %p")
 	if err != nil {
 		t.Fatalf("pj --format display label failed: %v\nStderr: %s", err, stderr)
 	}

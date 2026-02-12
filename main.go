@@ -52,7 +52,7 @@ type CLI struct {
 	Ansi       bool     `short:"a" help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
 	Labels     LabelsFlag `short:"l" help:"Show marker label in output (label or display)"`
-	Format     string   `short:"f" help:"Custom output format (%p=path, %P=full-path, %n=name, %m=marker, %i=icon, %l=label, %d=display-label, %c=color)" default:""`
+	Format     string   `short:"f" help:"Custom output format (%p=path, %P=full-path, %n=name, %m=marker, %i=icon, %l=label, %L=display-label, %c=color)" default:""`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
@@ -110,7 +110,7 @@ func formatOutput(format string, values map[string]string) string {
 	const sentinel = "\x00PCT\x00"
 	result := strings.ReplaceAll(format, "%%", sentinel)
 	// Replace %P before %p to avoid %P being partially matched as %p + "P"
-	for _, placeholder := range []string{"%P", "%p", "%n", "%m", "%i", "%l", "%d", "%c"} {
+	for _, placeholder := range []string{"%P", "%p", "%n", "%m", "%i", "%L", "%l", "%c"} {
 		if val, ok := values[placeholder]; ok {
 			result = strings.ReplaceAll(result, placeholder, val)
 		}
@@ -293,7 +293,7 @@ func main() {
 				"%m": p.Marker,
 				"%i": icon,
 				"%l": iconMapper.GetLabel(p.Marker),
-				"%d": iconMapper.GetDisplayLabel(p.Marker),
+				"%L": iconMapper.GetDisplayLabel(p.Marker),
 				"%c": iconMapper.GetColor(p.Marker),
 			}
 			fmt.Println(formatOutput(cli.Format, values))
