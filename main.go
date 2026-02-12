@@ -292,8 +292,8 @@ func main() {
 				"%n": filepath.Base(p.Path),
 				"%m": p.Marker,
 				"%i": icon,
-				"%l": iconMapper.GetLabel(p.Marker),
-				"%L": iconMapper.GetDisplayLabel(p.Marker),
+				"%l": icons.FormatLabel(iconMapper.GetLabel(p.Marker), cli.Ansi),
+				"%L": icons.FormatLabel(iconMapper.GetDisplayLabel(p.Marker), cli.Ansi),
 				"%c": iconMapper.GetColor(p.Marker),
 			}
 			fmt.Println(formatOutput(cli.Format, values))
