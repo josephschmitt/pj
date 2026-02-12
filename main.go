@@ -21,6 +21,8 @@ var version = "dev"
 // passed without a value, and accepts "label" or "display" as explicit values.
 type LabelsFlag string
 
+func (l LabelsFlag) IsBool() bool { return true }
+
 func (l *LabelsFlag) Decode(ctx *kong.DecodeContext) error {
 	token := ctx.Scan.Peek()
 	if token.IsValue() {
