@@ -1532,6 +1532,41 @@ func TestCLI_FormatDisplayLabel(t *testing.T) {
 	}
 }
 
+func TestCLI_FormatLabelAnsi(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--ansi", "--format", "%l %p")
+	if err != nil {
+		t.Fatalf("pj --format --ansi label failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	// Label should be wrapped in dim ANSI: \033[2m...\033[22m
+	if !strings.Contains(lines[0], "\033[2m") {
+		t.Errorf("Label should contain ANSI dim code, got: %q", lines[0])
+	}
+	if !strings.Contains(lines[0], "go\033[22m") {
+		t.Errorf("Label should contain 'go' with dim reset, got: %q", lines[0])
+	}
+}
+
+func TestCLI_FormatDisplayLabelAnsi(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--ansi", "--format", "%L %p")
+	if err != nil {
+		t.Fatalf("pj --format --ansi display label failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	// Display label should be wrapped in dim ANSI: \033[2m...\033[22m
+	if !strings.Contains(lines[0], "\033[2mGo\033[22m") {
+		t.Errorf("Display label should be dim-wrapped 'Go', got: %q", lines[0])
+	}
+}
+
 func TestCLI_FormatColor(t *testing.T) {
 	tmpDir := t.TempDir()
 	createTestProject(t, tmpDir, "go-project", "go.mod")
