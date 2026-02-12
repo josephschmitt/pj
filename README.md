@@ -15,7 +15,7 @@
 - **Smart Caching**: Caches results for instant subsequent searches (5-minute TTL)
 - **Flexible Markers**: Detects projects by `.git`, `go.mod`, `package.json`, `Cargo.toml`, and more
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
-- **Label Support**: Show marker labels like `[go]` or `[Go]` alongside project paths
+- **Label Support**: Show marker labels like `go` or `Go` alongside project paths
 - **ANSI Color Support**: Colorize icons with ANSI codes for terminal tools like `fzf` and `television`
 - **Unix Pipeline Support**: Pipe paths in and results out - works seamlessly in command chains
 - **Configurable**: YAML configuration file with sensible defaults
@@ -233,10 +233,10 @@ pj --icons --icon-map "go.mod:🐹"
 # Colored icons with per-marker override
 pj --icons --ansi --color-map "go.mod:cyan"
 
-# Show labels (e.g., [go], [nodejs], [git])
+# Show labels (e.g., "go", "nodejs", "git")
 pj --labels
 
-# Show display labels (e.g., [Go], [NodeJS], [Git])
+# Show display labels (e.g., "Go", "NodeJS", "Git")
 pj --labels display
 
 # Combine icons, labels, and color

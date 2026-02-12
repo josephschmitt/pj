@@ -685,8 +685,8 @@ func TestCLI_LabelsDefault(t *testing.T) {
 		t.Fatalf("Expected 1 project, got %d", len(lines))
 	}
 
-	if !strings.Contains(lines[0], "[go]") {
-		t.Errorf("Output should contain [go] label, got: %s", lines[0])
+	if !strings.HasPrefix(lines[0], "go ") {
+		t.Errorf("Output should start with 'go ' label, got: %s", lines[0])
 	}
 	if !strings.HasSuffix(lines[0], "go-project") {
 		t.Errorf("Output should end with project name, got: %s", lines[0])
@@ -708,8 +708,8 @@ func TestCLI_LabelsLabel(t *testing.T) {
 		t.Fatalf("Expected 1 project, got %d", len(lines))
 	}
 
-	if !strings.Contains(lines[0], "[go]") {
-		t.Errorf("Output should contain [go] label, got: %s", lines[0])
+	if !strings.HasPrefix(lines[0], "go ") {
+		t.Errorf("Output should start with 'go ' label, got: %s", lines[0])
 	}
 	if !strings.HasSuffix(lines[0], "go-project") {
 		t.Errorf("Output should end with project name, got: %s", lines[0])
@@ -731,8 +731,8 @@ func TestCLI_LabelsDisplay(t *testing.T) {
 		t.Fatalf("Expected 1 project, got %d", len(lines))
 	}
 
-	if !strings.Contains(lines[0], "[Go]") {
-		t.Errorf("Output should contain [Go] label, got: %s", lines[0])
+	if !strings.HasPrefix(lines[0], "Go ") {
+		t.Errorf("Output should start with 'Go ' label, got: %s", lines[0])
 	}
 }
 
@@ -751,9 +751,9 @@ func TestCLI_LabelsWithIcons(t *testing.T) {
 		t.Fatalf("Expected 1 project, got %d", len(lines))
 	}
 
-	// Should have both icon and label
-	if !strings.Contains(lines[0], "[go]") {
-		t.Errorf("Output should contain [go] label, got: %s", lines[0])
+	// Should have both icon and label (label is raw, no brackets)
+	if !strings.Contains(lines[0], "go ") {
+		t.Errorf("Output should contain 'go' label, got: %s", lines[0])
 	}
 	if !strings.HasSuffix(lines[0], "go-project") {
 		t.Errorf("Output should end with project name, got: %s", lines[0])
