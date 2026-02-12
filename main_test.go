@@ -1325,6 +1325,253 @@ func TestCLI_ShortenNonHomePath(t *testing.T) {
 	}
 }
 
+func TestFormatOutput(t *testing.T) {
+	tests := []struct {
+		name     string
+		format   string
+		values   map[string]string
+		expected string
+	}{
+		{
+			name:     "simple path",
+			format:   "%p",
+			values:   map[string]string{"%p": "/home/user/project"},
+			expected: "/home/user/project",
+		},
+		{
+			name:     "multiple placeholders",
+			format:   "%i %p",
+			values:   map[string]string{"%i": "X", "%p": "/path"},
+			expected: "X /path",
+		},
+		{
+			name:     "escape percent",
+			format:   "%%p: %p",
+			values:   map[string]string{"%p": "/actual/path"},
+			expected: "%p: /actual/path",
+		},
+		{
+			name:     "all placeholders",
+			format:   "%i [%l] %d %n %m %c %p %P",
+			values:   map[string]string{"%i": "X", "%l": "go", "%d": "Go", "%n": "myproj", "%m": "go.mod", "%c": "cyan", "%p": "~/dev/myproj", "%P": "/home/user/dev/myproj"},
+			expected: "X [go] Go myproj go.mod cyan ~/dev/myproj /home/user/dev/myproj",
+		},
+		{
+			name:     "P before p ordering",
+			format:   "%P %p",
+			values:   map[string]string{"%P": "/full/path", "%p": "~/short"},
+			expected: "/full/path ~/short",
+		},
+		{
+			name:     "no placeholders",
+			format:   "hello world",
+			values:   map[string]string{"%p": "/path"},
+			expected: "hello world",
+		},
+		{
+			name:     "empty values",
+			format:   "%i%p",
+			values:   map[string]string{"%i": "", "%p": "/path"},
+			expected: "/path",
+		},
+		{
+			name:     "double percent at end",
+			format:   "100%%",
+			values:   map[string]string{},
+			expected: "100%",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatOutput(tt.format, tt.values)
+			if got != tt.expected {
+				t.Errorf("formatOutput(%q) = %q, want %q", tt.format, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCLI_FormatPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%p")
+	if err != nil {
+		t.Fatalf("pj --format failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("Expected 1 project, got %d", len(lines))
+	}
+
+	expected := filepath.Join(tmpDir, "go-project")
+	if lines[0] != expected {
+		t.Errorf("Output = %q, want %q", lines[0], expected)
+	}
+}
+
+func TestCLI_FormatFullPath(t *testing.T) {
+	fakeHome := t.TempDir()
+	setFakeHome(t, fakeHome)
+	createTestProject(t, fakeHome, "project", "go.mod")
+
+	env := setupTestEnv(t)
+
+	// %P should always show full path even with --shorten
+	stdout, stderr, err := env.runPJ("-p", fakeHome, "--no-cache", "--shorten", "--format", "%P")
+	if err != nil {
+		t.Fatalf("pj --format %%P failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	expected := filepath.Join(fakeHome, "project")
+	if lines[0] != expected {
+		t.Errorf("%%P output = %q, want %q (full path)", lines[0], expected)
+	}
+
+	// %p should be shortened with --shorten
+	stdout2, _, err := env.runPJ("-p", fakeHome, "--no-cache", "--shorten", "--format", "%p")
+	if err != nil {
+		t.Fatalf("pj --format %%p --shorten failed: %v", err)
+	}
+
+	lines2 := strings.Split(strings.TrimSpace(stdout2), "\n")
+	if !strings.HasPrefix(lines2[0], "~") {
+		t.Errorf("%%p with --shorten should start with ~, got: %s", lines2[0])
+	}
+}
+
+func TestCLI_FormatName(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "my-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%n %m")
+	if err != nil {
+		t.Fatalf("pj --format failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if lines[0] != "my-project go.mod" {
+		t.Errorf("Output = %q, want %q", lines[0], "my-project go.mod")
+	}
+}
+
+func TestCLI_FormatIcon(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	// With --icons, %i should have content
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--icons", "--format", "%i %p")
+	if err != nil {
+		t.Fatalf("pj --format --icons failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if !strings.HasSuffix(lines[0], "go-project") {
+		t.Errorf("Output should end with project name, got: %s", lines[0])
+	}
+	// Icon adds content before the space, so line should be longer than just the path
+	plainPath := filepath.Join(tmpDir, "go-project")
+	if len(lines[0]) <= len(plainPath)+1 {
+		t.Errorf("Output with %%i --icons should include icon, got: %s", lines[0])
+	}
+}
+
+func TestCLI_FormatIconWithoutFlag(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	// Without --icons, %i should be empty
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%i%p")
+	if err != nil {
+		t.Fatalf("pj --format without --icons failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	expected := filepath.Join(tmpDir, "go-project")
+	if lines[0] != expected {
+		t.Errorf("%%i without --icons should be empty, got: %q, want %q", lines[0], expected)
+	}
+}
+
+func TestCLI_FormatLabel(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "[%l] %p")
+	if err != nil {
+		t.Fatalf("pj --format label failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if !strings.HasPrefix(lines[0], "[go] ") {
+		t.Errorf("Output should start with [go], got: %s", lines[0])
+	}
+}
+
+func TestCLI_FormatDisplayLabel(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%d: %p")
+	if err != nil {
+		t.Fatalf("pj --format display label failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if !strings.HasPrefix(lines[0], "Go: ") {
+		t.Errorf("Output should start with 'Go: ', got: %s", lines[0])
+	}
+}
+
+func TestCLI_FormatColor(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%c %p")
+	if err != nil {
+		t.Fatalf("pj --format color failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if !strings.HasPrefix(lines[0], "cyan ") {
+		t.Errorf("Output should start with 'cyan ', got: %s", lines[0])
+	}
+}
+
+func TestCLI_FormatEscapePercent(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--format", "%%p: %p")
+	if err != nil {
+		t.Fatalf("pj --format escape failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	expected := "%p: " + filepath.Join(tmpDir, "project")
+	if lines[0] != expected {
+		t.Errorf("Output = %q, want %q", lines[0], expected)
+	}
+}
+
+func TestCLI_FormatIgnoredWithJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestProject(t, tmpDir, "project", ".git/")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--json", "--format", "%n")
+	if err != nil {
+		t.Fatalf("pj --json --format failed: %v\nStderr: %s", err, stderr)
+	}
+
+	// Should still be valid JSON (--format ignored with --json)
+	if !json.Valid([]byte(stdout)) {
+		t.Errorf("Output should be valid JSON when --json is used, got: %s", stdout)
+	}
+}
+
 func TestCLI_JSONOutputFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 
