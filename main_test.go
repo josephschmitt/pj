@@ -1725,7 +1725,7 @@ func TestCLI_SortAlpha(t *testing.T) {
 	createTestProject(t, tmpDir, "z-project", "go.mod")
 	createTestProject(t, tmpDir, "a-project", ".git/")
 
-	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--sort", "alpha", "--sort-direction", "asc")
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--sort", "alpha")
 	if err != nil {
 		t.Fatalf("pj failed: %v\nStderr: %s", err, stderr)
 	}
@@ -1786,15 +1786,15 @@ func TestCLI_SortLabel(t *testing.T) {
 		t.Fatalf("Expected 3 projects, got %d", len(lines))
 	}
 
-	// Default direction is desc, so label desc: rust > go > git
-	if !strings.Contains(lines[0], "rust-project") {
-		t.Errorf("Label desc: first line should be rust-project, got: %s", lines[0])
+	// Default direction is asc, so label asc: git < go < rust
+	if !strings.Contains(lines[0], "git-project") {
+		t.Errorf("Label asc: first line should be git-project, got: %s", lines[0])
 	}
 	if !strings.Contains(lines[1], "go-project") {
-		t.Errorf("Label desc: second line should be go-project, got: %s", lines[1])
+		t.Errorf("Label asc: second line should be go-project, got: %s", lines[1])
 	}
-	if !strings.Contains(lines[2], "git-project") {
-		t.Errorf("Label desc: third line should be git-project, got: %s", lines[2])
+	if !strings.Contains(lines[2], "rust-project") {
+		t.Errorf("Label asc: third line should be rust-project, got: %s", lines[2])
 	}
 }
 
