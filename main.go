@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -56,6 +57,8 @@ type CLI struct {
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
+	Sort          string `help:"Sort order: alpha, priority, label (default: priority)" default:"priority" enum:"alpha,priority,label"`
+	SortDirection string `help:"Sort direction: asc, desc (default: desc)" default:"desc" enum:"asc,desc" name:"sort-direction"`
 	JSON       bool     `short:"j" help:"Output results in JSON format"`
 	Verbose    bool     `short:"v" help:"Enable debug output"`
 	Version    bool     `short:"V" help:"Show version"`
@@ -117,6 +120,37 @@ func formatOutput(format string, values map[string]string) string {
 	}
 	result = strings.ReplaceAll(result, sentinel, "%")
 	return result
+}
+
+func sortProjects(projects []discover.Project, sortBy, direction string, mapper *icons.Mapper) {
+	desc := direction == "desc"
+	sort.SliceStable(projects, func(i, j int) bool {
+		switch sortBy {
+		case "priority":
+			if projects[i].Priority != projects[j].Priority {
+				if desc {
+					return projects[i].Priority > projects[j].Priority
+				}
+				return projects[i].Priority < projects[j].Priority
+			}
+			return projects[i].Path < projects[j].Path
+		case "label":
+			labelI := mapper.GetLabel(projects[i].Marker)
+			labelJ := mapper.GetLabel(projects[j].Marker)
+			if labelI != labelJ {
+				if desc {
+					return labelI > labelJ
+				}
+				return labelI < labelJ
+			}
+			return projects[i].Path < projects[j].Path
+		default: // "alpha"
+			if desc {
+				return projects[i].Path > projects[j].Path
+			}
+			return projects[i].Path < projects[j].Path
+		}
+	})
 }
 
 func main() {
@@ -224,6 +258,8 @@ func main() {
 			}
 		}
 	}
+
+	sortProjects(projects, cli.Sort, cli.SortDirection, iconMapper)
 
 	if cli.JSON {
 		type projectJSON struct {

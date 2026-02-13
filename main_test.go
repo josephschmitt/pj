@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/josephschmitt/pj/internal/discover"
+	"github.com/josephschmitt/pj/internal/icons"
 )
 
 var (
@@ -410,6 +413,7 @@ func TestCLI_PrioritySorting(t *testing.T) {
 	createTestProject(t, tmpDir, "high-priority", "go.mod")
 	createTestProject(t, tmpDir, "low-priority", ".git/")
 
+	// Default sort is priority descending
 	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache")
 	if err != nil {
 		t.Fatalf("pj failed: %v\nStderr: %s", err, stderr)
@@ -1640,5 +1644,194 @@ func TestCLI_JSONOutputFormat(t *testing.T) {
 	// Verify root structure has "projects" key
 	if !strings.Contains(stdout, `"projects"`) {
 		t.Error("JSON output should contain 'projects' key")
+	}
+}
+
+func TestSortProjects(t *testing.T) {
+	mapper := icons.NewMapper(
+		map[string]string{},
+		map[string]string{},
+		map[string]string{".git": "git", "go.mod": "go", "Cargo.toml": "rust"},
+		map[string]string{},
+	)
+
+	projects := []discover.Project{
+		{Path: "/z/project", Marker: "go.mod", Priority: 10},
+		{Path: "/a/project", Marker: ".git", Priority: 1},
+		{Path: "/m/project", Marker: "Cargo.toml", Priority: 10},
+	}
+
+	tests := []struct {
+		name      string
+		sortBy    string
+		direction string
+		expected  []string
+	}{
+		{
+			name:      "alpha asc",
+			sortBy:    "alpha",
+			direction: "asc",
+			expected:  []string{"/a/project", "/m/project", "/z/project"},
+		},
+		{
+			name:      "alpha desc",
+			sortBy:    "alpha",
+			direction: "desc",
+			expected:  []string{"/z/project", "/m/project", "/a/project"},
+		},
+		{
+			name:      "priority asc",
+			sortBy:    "priority",
+			direction: "asc",
+			expected:  []string{"/a/project", "/m/project", "/z/project"},
+		},
+		{
+			name:      "priority desc",
+			sortBy:    "priority",
+			direction: "desc",
+			expected:  []string{"/m/project", "/z/project", "/a/project"},
+		},
+		{
+			name:      "label asc",
+			sortBy:    "label",
+			direction: "asc",
+			expected:  []string{"/a/project", "/z/project", "/m/project"},
+		},
+		{
+			name:      "label desc",
+			sortBy:    "label",
+			direction: "desc",
+			expected:  []string{"/m/project", "/z/project", "/a/project"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := make([]discover.Project, len(projects))
+			copy(p, projects)
+			sortProjects(p, tt.sortBy, tt.direction, mapper)
+			for i, proj := range p {
+				if proj.Path != tt.expected[i] {
+					t.Errorf("position %d: got %q, want %q", i, proj.Path, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestCLI_SortAlpha(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "z-project", "go.mod")
+	createTestProject(t, tmpDir, "a-project", ".git/")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--sort", "alpha", "--sort-direction", "asc")
+	if err != nil {
+		t.Fatalf("pj failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("Expected 2 projects, got %d", len(lines))
+	}
+
+	if !strings.Contains(lines[0], "a-project") {
+		t.Errorf("Alpha asc: first line should be a-project, got: %s", lines[0])
+	}
+	if !strings.Contains(lines[1], "z-project") {
+		t.Errorf("Alpha asc: second line should be z-project, got: %s", lines[1])
+	}
+}
+
+func TestCLI_SortPriorityAsc(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+	createTestProject(t, tmpDir, "git-project", ".git/")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--sort", "priority", "--sort-direction", "asc")
+	if err != nil {
+		t.Fatalf("pj failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("Expected 2 projects, got %d", len(lines))
+	}
+
+	// Ascending: low priority (.git=1) first
+	if !strings.Contains(lines[0], "git-project") {
+		t.Errorf("Priority asc: first line should be git-project, got: %s", lines[0])
+	}
+	if !strings.Contains(lines[1], "go-project") {
+		t.Errorf("Priority asc: second line should be go-project, got: %s", lines[1])
+	}
+}
+
+func TestCLI_SortLabel(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Labels: go.mod="go", .git="git", Cargo.toml="rust"
+	createTestProject(t, tmpDir, "rust-project", "Cargo.toml")
+	createTestProject(t, tmpDir, "git-project", ".git/")
+	createTestProject(t, tmpDir, "go-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--sort", "label")
+	if err != nil {
+		t.Fatalf("pj failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("Expected 3 projects, got %d", len(lines))
+	}
+
+	// Default direction is desc, so label desc: rust > go > git
+	if !strings.Contains(lines[0], "rust-project") {
+		t.Errorf("Label desc: first line should be rust-project, got: %s", lines[0])
+	}
+	if !strings.Contains(lines[1], "go-project") {
+		t.Errorf("Label desc: second line should be go-project, got: %s", lines[1])
+	}
+	if !strings.Contains(lines[2], "git-project") {
+		t.Errorf("Label desc: third line should be git-project, got: %s", lines[2])
+	}
+}
+
+func TestCLI_SortAlphaDesc(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createTestProject(t, tmpDir, "a-project", ".git/")
+	createTestProject(t, tmpDir, "z-project", "go.mod")
+
+	stdout, stderr, err := runPJ(t, "-p", tmpDir, "--no-cache", "--sort", "alpha", "--sort-direction", "desc")
+	if err != nil {
+		t.Fatalf("pj failed: %v\nStderr: %s", err, stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("Expected 2 projects, got %d", len(lines))
+	}
+
+	if !strings.Contains(lines[0], "z-project") {
+		t.Errorf("Alpha desc: first line should be z-project, got: %s", lines[0])
+	}
+	if !strings.Contains(lines[1], "a-project") {
+		t.Errorf("Alpha desc: second line should be a-project, got: %s", lines[1])
+	}
+}
+
+func TestCLI_SortInvalidValue(t *testing.T) {
+	_, _, err := runPJ(t, "--sort", "invalid")
+	if err == nil {
+		t.Error("Invalid sort value should produce an error")
+	}
+}
+
+func TestCLI_SortDirectionInvalidValue(t *testing.T) {
+	_, _, err := runPJ(t, "--sort-direction", "invalid")
+	if err == nil {
+		t.Error("Invalid sort-direction value should produce an error")
 	}
 }
