@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0](https://github.com/josephschmitt/pj/compare/v1.12.0...v1.13.0) (2026-02-13)
+
+
+### Features
+
+* add --sort flag for custom output sorting ([#40](https://github.com/josephschmitt/pj/issues/40)) ([cce6ac5](https://github.com/josephschmitt/pj/commit/cce6ac5003caeca2c6936671fd2a036d61b86d87))
+* add tsconfig.json as built-in TypeScript project marker ([#38](https://github.com/josephschmitt/pj/issues/38)) ([c43f0a1](https://github.com/josephschmitt/pj/commit/c43f0a13692275fc6626444be2ee5d985e6c8330))
+
+
+### Bug Fixes
+
+* make sort direction defaults context-sensitive ([#41](https://github.com/josephschmitt/pj/issues/41)) ([085a36d](https://github.com/josephschmitt/pj/commit/085a36dcff4bda9558031019c261af53b47f8a1d))
+
 ## [1.12.0](https://github.com/josephschmitt/pj/compare/v1.11.0...v1.12.0) (2026-02-12)
 
 
