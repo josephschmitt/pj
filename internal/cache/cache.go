@@ -114,6 +114,8 @@ func (m *Manager) computeConfigHash() string {
 	h.Write([]byte(strconv.Itoa(m.config.MaxDepth)))
 	h.Write([]byte(strconv.FormatBool(m.config.NoIgnore)))
 	h.Write([]byte(strconv.FormatBool(m.config.Nested)))
+	h.Write([]byte(strconv.FormatBool(m.config.Worktrees)))
+	h.Write([]byte(strconv.FormatBool(m.config.NoWorktrees)))
 
 	return fmt.Sprintf("%x", h.Sum(nil))[:16]
 }

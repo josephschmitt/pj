@@ -1134,3 +1134,64 @@ func TestColorConfig(t *testing.T) {
 		}
 	})
 }
+
+func TestWorktreeConfigDefaults(t *testing.T) {
+	cfg := defaults()
+	if cfg.Worktrees {
+		t.Error("Worktrees should default to false")
+	}
+	if cfg.NoWorktrees {
+		t.Error("NoWorktrees should default to false")
+	}
+}
+
+func TestWorktreeConfigYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	yamlContent := `worktrees: true`
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if !cfg.Worktrees {
+		t.Error("Worktrees should be true when set in YAML")
+	}
+}
+
+func TestMergeFlagsWorktrees(t *testing.T) {
+	t.Run("Worktrees flag", func(t *testing.T) {
+		cfg := &Config{Worktrees: false}
+		flags := struct {
+			Worktrees   bool
+			NoWorktrees bool
+		}{Worktrees: true}
+
+		if err := cfg.MergeFlags(flags); err != nil {
+			t.Fatalf("MergeFlags() error = %v", err)
+		}
+		if !cfg.Worktrees {
+			t.Error("MergeFlags should set Worktrees=true")
+		}
+	})
+
+	t.Run("NoWorktrees flag", func(t *testing.T) {
+		cfg := &Config{NoWorktrees: false}
+		flags := struct {
+			Worktrees   bool
+			NoWorktrees bool
+		}{NoWorktrees: true}
+
+		if err := cfg.MergeFlags(flags); err != nil {
+			t.Fatalf("MergeFlags() error = %v", err)
+		}
+		if !cfg.NoWorktrees {
+			t.Error("MergeFlags should set NoWorktrees=true")
+		}
+	})
+}

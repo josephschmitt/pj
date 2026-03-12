@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
@@ -14,9 +15,11 @@ import (
 
 // Project represents a discovered project directory
 type Project struct {
-	Path     string
-	Marker   string
-	Priority int
+	Path           string `json:"path"`
+	Marker         string `json:"marker"`
+	Priority       int    `json:"priority"`
+	IsWorktree     bool   `json:"isWorktree,omitempty"`
+	WorktreeParent string `json:"worktreeParent,omitempty"`
 }
 
 // Discoverer handles project discovery
@@ -180,10 +183,30 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 
 		// If we found any marker, emit the project with the best one
 		if bestMarker != "" {
-			results <- Project{
+			project := Project{
 				Path:     path,
 				Marker:   bestMarker,
 				Priority: bestPriority,
+			}
+
+			// Path A: detect if this is a worktree (.git is a file, not a directory)
+			gitPath := filepath.Join(path, ".git")
+			if info, err := os.Lstat(gitPath); err == nil && !info.IsDir() {
+				parent := parseWorktreeGitFile(gitPath)
+				if parent != "" {
+					if d.config.NoWorktrees {
+						return fs.SkipDir
+					}
+					project.IsWorktree = true
+					project.WorktreeParent = parent
+				}
+			}
+
+			results <- project
+
+			// Path B: discover linked worktrees from parent repos
+			if d.config.Worktrees && !project.IsWorktree {
+				d.discoverWorktrees(path, results)
 			}
 
 			// Skip subdirectories unless nested discovery is enabled
@@ -239,6 +262,152 @@ func (d *Discoverer) checkPatternMarkers(dir string) (string, int) {
 		}
 	}
 	return bestMatch, bestPriority
+}
+
+// parseWorktreeGitFile reads a .git file (not directory) and resolves the parent repo path.
+// Worktree .git files contain "gitdir: <path>" pointing to the parent's .git/worktrees/<name>/.
+func parseWorktreeGitFile(gitFilePath string) string {
+	f, err := os.Open(gitFilePath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	if !scanner.Scan() {
+		return ""
+	}
+	line := scanner.Text()
+	if !strings.HasPrefix(line, "gitdir: ") {
+		return ""
+	}
+
+	gitdir := strings.TrimPrefix(line, "gitdir: ")
+
+	// Resolve relative paths against the worktree directory
+	if !filepath.IsAbs(gitdir) {
+		gitdir = filepath.Join(filepath.Dir(gitFilePath), gitdir)
+	}
+	gitdir = filepath.Clean(gitdir)
+
+	// gitdir points to e.g. /parent/.git/worktrees/<name>
+	// Walk up to find the parent repo: strip /.git/worktrees/<name> to get /parent
+	parts := strings.Split(gitdir, string(os.PathSeparator))
+	for i := len(parts) - 1; i >= 1; i-- {
+		if parts[i] == "worktrees" && parts[i-1] == ".git" {
+			parentPath := strings.Join(parts[:i-1], string(os.PathSeparator))
+			if parentPath == "" {
+				parentPath = "/"
+			}
+			return parentPath
+		}
+	}
+	return ""
+}
+
+// discoverWorktrees finds git worktrees linked from a parent repo's .git/worktrees/ directory.
+func (d *Discoverer) discoverWorktrees(repoPath string, results chan<- Project) {
+	worktreesDir := filepath.Join(repoPath, ".git", "worktrees")
+	entries, err := os.ReadDir(worktreesDir)
+	if err != nil {
+		return // No worktrees directory
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		gitdirPath := filepath.Join(worktreesDir, entry.Name(), "gitdir")
+		data, err := os.ReadFile(gitdirPath)
+		if err != nil {
+			if d.verbose {
+				fmt.Fprintf(os.Stderr, "Warning: couldn't read gitdir for worktree %s: %v\n", entry.Name(), err)
+			}
+			continue
+		}
+
+		wtGitFile := strings.TrimSpace(string(data))
+
+		// Resolve relative paths
+		if !filepath.IsAbs(wtGitFile) {
+			wtGitFile = filepath.Join(worktreesDir, entry.Name(), wtGitFile)
+		}
+		wtGitFile = filepath.Clean(wtGitFile)
+
+		// The gitdir file contains the path to the worktree's .git file
+		// The worktree root is its parent directory
+		wtPath := wtGitFile
+		if strings.HasSuffix(wtPath, string(os.PathSeparator)+".git") || strings.HasSuffix(wtPath, "/.git") {
+			wtPath = filepath.Dir(wtPath)
+		}
+
+		if _, err := os.Stat(wtPath); err != nil {
+			if d.verbose {
+				fmt.Fprintf(os.Stderr, "Warning: worktree path doesn't exist: %s\n", wtPath)
+			}
+			continue
+		}
+
+		// Check excludes
+		wtName := filepath.Base(wtPath)
+		excluded := false
+		for _, exclude := range d.config.Excludes {
+			if matchPattern(wtName, exclude) {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
+			continue
+		}
+
+		// Find the best marker in the worktree directory
+		bestMarker, bestPriority := d.findBestMarker(wtPath)
+		if bestMarker == "" {
+			bestMarker = ".git"
+			bestPriority = d.getMarkerPriority(".git")
+		}
+
+		results <- Project{
+			Path:           wtPath,
+			Marker:         bestMarker,
+			Priority:       bestPriority,
+			IsWorktree:     true,
+			WorktreeParent: repoPath,
+		}
+
+		if d.verbose {
+			fmt.Fprintf(os.Stderr, "Found worktree: %s (parent: %s)\n", wtPath, repoPath)
+		}
+	}
+}
+
+// findBestMarker checks a directory for configured markers and returns the best one.
+func (d *Discoverer) findBestMarker(dir string) (string, int) {
+	var bestMarker string
+	var bestPriority int
+
+	for _, marker := range d.config.ExactMarkers {
+		markerPath := filepath.Join(dir, marker)
+		if _, err := os.Stat(markerPath); err == nil {
+			priority := d.getMarkerPriority(marker)
+			if priority > bestPriority {
+				bestMarker = marker
+				bestPriority = priority
+			}
+		}
+	}
+
+	if len(d.config.PatternMarkers) > 0 {
+		patternMarker, patternPriority := d.checkPatternMarkers(dir)
+		if patternPriority > bestPriority {
+			bestMarker = patternMarker
+			bestPriority = patternPriority
+		}
+	}
+
+	return bestMarker, bestPriority
 }
 
 // matchPattern checks if a name matches a pattern (simple glob support)
