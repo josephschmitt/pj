@@ -45,8 +45,8 @@ type CLI struct {
 	Marker     []string `short:"m" help:"Add project marker (repeatable)"`
 	Exclude    []string `short:"e" help:"Exclude pattern (repeatable)"`
 	MaxDepth   int      `short:"d" help:"Maximum search depth"`
-	NoIgnore    bool     `help:"Don't respect .gitignore and .ignore files"`
-	NoNested    bool     `help:"Don't search for projects inside other projects"`
+	NoIgnore   bool     `help:"Don't respect .gitignore and .ignore files"`
+	NoNested   bool     `help:"Don't search for projects inside other projects"`
 	Worktrees   bool     `help:"Discover git worktrees from parent repos, even outside search paths"`
 	NoWorktrees bool     `help:"Exclude git worktrees from results" name:"no-worktrees"`
 	Icons      bool     `help:"Show marker-based icons"`

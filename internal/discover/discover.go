@@ -158,28 +158,7 @@ func (d *Discoverer) walkPath(root string, results chan<- Project) {
 		}
 
 		// Check for project markers - find the highest priority marker
-		// Phase 1: Check exact markers using os.Stat (fast path)
-		var bestMarker string
-		var bestPriority int
-		for _, marker := range d.config.ExactMarkers {
-			markerPath := filepath.Join(path, marker)
-			if _, err := os.Stat(markerPath); err == nil {
-				priority := d.getMarkerPriority(marker)
-				if priority > bestPriority {
-					bestMarker = marker
-					bestPriority = priority
-				}
-			}
-		}
-
-		// Phase 2: Check pattern markers using directory listing (only if configured)
-		if len(d.config.PatternMarkers) > 0 {
-			patternMarker, patternPriority := d.checkPatternMarkers(path)
-			if patternPriority > bestPriority {
-				bestMarker = patternMarker
-				bestPriority = patternPriority
-			}
-		}
+		bestMarker, bestPriority := d.findBestMarker(path)
 
 		// If we found any marker, emit the project with the best one
 		if bestMarker != "" {
@@ -338,7 +317,7 @@ func (d *Discoverer) discoverWorktrees(repoPath string, results chan<- Project) 
 		// The gitdir file contains the path to the worktree's .git file
 		// The worktree root is its parent directory
 		wtPath := wtGitFile
-		if strings.HasSuffix(wtPath, string(os.PathSeparator)+".git") || strings.HasSuffix(wtPath, "/.git") {
+		if strings.HasSuffix(wtPath, string(os.PathSeparator)+".git") {
 			wtPath = filepath.Dir(wtPath)
 		}
 
