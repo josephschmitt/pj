@@ -1387,3 +1387,476 @@ func TestDiscoverPatternMarkerSkipsDirectories(t *testing.T) {
 		t.Errorf("Expected file marker 'App.csproj', got '%s'", projects[0].Marker)
 	}
 }
+
+// createWorktreeSetup creates a parent git repo with worktrees linked to it.
+// Returns (parentRepoPath, []worktreePaths).
+func createWorktreeSetup(t *testing.T, base string, parentName string, worktreeNames ...string) (string, []string) {
+	t.Helper()
+
+	// Create parent repo with .git directory
+	parentDir := createProject(t, base, parentName, ".git/")
+
+	// Create .git/worktrees/ entries for each worktree
+	worktreesDir := filepath.Join(parentDir, ".git", "worktrees")
+	if err := os.MkdirAll(worktreesDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	var wtPaths []string
+	for _, wtName := range worktreeNames {
+		// Create the worktree directory
+		wtDir := filepath.Join(base, wtName)
+		if err := os.MkdirAll(wtDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Create the worktree's .git file (a file, not directory) pointing back
+		wtGitFile := filepath.Join(wtDir, ".git")
+		gitdirTarget := filepath.Join(worktreesDir, wtName)
+		if err := os.WriteFile(wtGitFile, []byte("gitdir: "+gitdirTarget+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Create the entry in parent's .git/worktrees/<name>/
+		wtEntryDir := filepath.Join(worktreesDir, wtName)
+		if err := os.MkdirAll(wtEntryDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Write gitdir file pointing to the worktree's .git file
+		gitdirPath := filepath.Join(wtEntryDir, "gitdir")
+		if err := os.WriteFile(gitdirPath, []byte(filepath.Join(wtDir, ".git")+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		wtPaths = append(wtPaths, wtDir)
+	}
+
+	return parentDir, wtPaths
+}
+
+func TestWorktreeDetectionPathA(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	parentDir, wtPaths := createWorktreeSetup(t, tmpDir, "main-repo", "feature-wt")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find parent repo and worktree (both are in search path)
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (worktree=%v)", p.Path, p.IsWorktree)
+		}
+	}
+
+	for _, p := range projects {
+		switch p.Path {
+		case wtPaths[0]:
+			if !p.IsWorktree {
+				t.Error("Worktree project should have IsWorktree=true")
+			}
+			if p.WorktreeParent != parentDir {
+				t.Errorf("WorktreeParent = %q, want %q", p.WorktreeParent, parentDir)
+			}
+		case parentDir:
+			if p.IsWorktree {
+				t.Error("Parent repo should have IsWorktree=false")
+			}
+		}
+	}
+}
+
+func TestWorktreeDiscoveryPathB(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create parent in search path, worktree OUTSIDE search path
+	searchDir := filepath.Join(tmpDir, "search")
+	externalDir := filepath.Join(tmpDir, "external")
+	if err := os.MkdirAll(searchDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create parent repo
+	parentDir := createProject(t, searchDir, "main-repo", ".git/")
+
+	// Create worktree outside search path
+	wtDir := filepath.Join(externalDir, "feature-wt")
+	if err := os.MkdirAll(wtDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up .git/worktrees/ in parent
+	worktreesDir := filepath.Join(parentDir, ".git", "worktrees")
+	wtEntryDir := filepath.Join(worktreesDir, "feature-wt")
+	if err := os.MkdirAll(wtEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtEntryDir, "gitdir"), []byte(filepath.Join(wtDir, ".git")+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create worktree's .git file
+	if err := os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: "+wtEntryDir+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// With Worktrees=true, should find external worktree via Path B
+	cfg := &config.Config{
+		SearchPaths: []string{searchDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		Worktrees:   true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (worktree=%v)", p.Path, p.IsWorktree)
+		}
+	}
+
+	foundWorktree := false
+	for _, p := range projects {
+		if p.Path == wtDir {
+			foundWorktree = true
+			if !p.IsWorktree {
+				t.Error("External worktree should have IsWorktree=true")
+			}
+			if p.WorktreeParent != parentDir {
+				t.Errorf("WorktreeParent = %q, want %q", p.WorktreeParent, parentDir)
+			}
+		}
+	}
+	if !foundWorktree {
+		t.Error("External worktree not found (should be discovered via Path B)")
+	}
+}
+
+func TestWorktreeDiscoveryDisabledByDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	searchDir := filepath.Join(tmpDir, "search")
+	externalDir := filepath.Join(tmpDir, "external")
+	if err := os.MkdirAll(searchDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	parentDir := createProject(t, searchDir, "main-repo", ".git/")
+
+	wtDir := filepath.Join(externalDir, "feature-wt")
+	if err := os.MkdirAll(wtDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	worktreesDir := filepath.Join(parentDir, ".git", "worktrees")
+	wtEntryDir := filepath.Join(worktreesDir, "feature-wt")
+	if err := os.MkdirAll(wtEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtEntryDir, "gitdir"), []byte(filepath.Join(wtDir, ".git")+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: "+wtEntryDir+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Default: Worktrees=false — should NOT find external worktree
+	cfg := &config.Config{
+		SearchPaths: []string{searchDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1 (only parent)", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (worktree=%v)", p.Path, p.IsWorktree)
+		}
+	}
+}
+
+func TestNoWorktreesFiltersAll(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	createWorktreeSetup(t, tmpDir, "main-repo", "feature-wt")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		NoWorktrees: true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should only find parent repo, worktree is filtered out
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (worktree=%v)", p.Path, p.IsWorktree)
+		}
+	}
+
+	for _, p := range projects {
+		if p.IsWorktree {
+			t.Error("Found worktree project despite NoWorktrees=true")
+		}
+	}
+}
+
+func TestWorktreeExcluded(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	searchDir := filepath.Join(tmpDir, "search")
+	externalDir := filepath.Join(tmpDir, "external")
+	if err := os.MkdirAll(searchDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	parentDir := createProject(t, searchDir, "main-repo", ".git/")
+
+	// Create worktree with excluded name
+	wtDir := filepath.Join(externalDir, "excluded-wt")
+	if err := os.MkdirAll(wtDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	worktreesDir := filepath.Join(parentDir, ".git", "worktrees")
+	wtEntryDir := filepath.Join(worktreesDir, "excluded-wt")
+	if err := os.MkdirAll(wtEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtEntryDir, "gitdir"), []byte(filepath.Join(wtDir, ".git")+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{searchDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{"excluded-*"},
+		Worktrees:   true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1 (only parent)", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s", p.Path)
+		}
+	}
+}
+
+func TestWorktreeStalePath(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	parentDir := createProject(t, tmpDir, "main-repo", ".git/")
+
+	// Create worktrees entry pointing to non-existent path
+	worktreesDir := filepath.Join(parentDir, ".git", "worktrees", "stale")
+	if err := os.MkdirAll(worktreesDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(worktreesDir, "gitdir"), []byte("/nonexistent/path/.git\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		Worktrees:   true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should only find parent (stale worktree is skipped gracefully)
+	if len(projects) != 1 {
+		t.Errorf("Discover() found %d projects, want 1", len(projects))
+	}
+}
+
+func TestWorktreeMarkerInheritance(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	searchDir := filepath.Join(tmpDir, "search")
+	externalDir := filepath.Join(tmpDir, "external")
+	if err := os.MkdirAll(searchDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(externalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	parentDir := createProject(t, searchDir, "main-repo", ".git/", "go.mod")
+
+	// Create worktree with go.mod too
+	wtDir := filepath.Join(externalDir, "feature-wt")
+	if err := os.MkdirAll(wtDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "go.mod"), []byte("module test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	worktreesDir := filepath.Join(parentDir, ".git", "worktrees")
+	wtEntryDir := filepath.Join(worktreesDir, "feature-wt")
+	if err := os.MkdirAll(wtEntryDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtEntryDir, "gitdir"), []byte(filepath.Join(wtDir, ".git")+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.Config{
+		SearchPaths: []string{searchDir},
+		Markers:     []string{".git", "go.mod"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		Worktrees:   true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	for _, p := range projects {
+		if p.Path == wtDir {
+			// Worktree should get go.mod (priority 10) not .git (priority 1)
+			if p.Marker != "go.mod" {
+				t.Errorf("Worktree marker = %q, want go.mod (higher priority)", p.Marker)
+			}
+			if p.Priority != 10 {
+				t.Errorf("Worktree priority = %d, want 10", p.Priority)
+			}
+		}
+	}
+}
+
+func TestWorktreeDedup(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Worktree is within search path AND referenced from parent's .git/worktrees/
+	createWorktreeSetup(t, tmpDir, "main-repo", "feature-wt")
+
+	cfg := &config.Config{
+		SearchPaths: []string{tmpDir},
+		Markers:     []string{".git"},
+		MaxDepth:    3,
+		Excludes:    []string{},
+		Worktrees:   true,
+	}
+
+	d := New(cfg, false)
+	projects, err := d.Discover()
+	if err != nil {
+		t.Fatalf("Discover() error = %v", err)
+	}
+
+	// Should find exactly 2 (parent + worktree), not 3 (parent + worktree found twice)
+	if len(projects) != 2 {
+		t.Errorf("Discover() found %d projects, want 2 (dedup should prevent duplicates)", len(projects))
+		for _, p := range projects {
+			t.Logf("  Found: %s (worktree=%v)", p.Path, p.IsWorktree)
+		}
+	}
+}
+
+func TestParseWorktreeGitFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	t.Run("valid gitdir reference", func(t *testing.T) {
+		parentDir := filepath.Join(tmpDir, "parent")
+		worktreesDir := filepath.Join(parentDir, ".git", "worktrees", "feature")
+		if err := os.MkdirAll(worktreesDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		gitFile := filepath.Join(tmpDir, "wt", ".git")
+		if err := os.MkdirAll(filepath.Dir(gitFile), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(gitFile, []byte("gitdir: "+worktreesDir+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		parent := parseWorktreeGitFile(gitFile)
+		if parent != parentDir {
+			t.Errorf("parseWorktreeGitFile() = %q, want %q", parent, parentDir)
+		}
+	})
+
+	t.Run("invalid content", func(t *testing.T) {
+		gitFile := filepath.Join(tmpDir, "bad-wt", ".git")
+		if err := os.MkdirAll(filepath.Dir(gitFile), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(gitFile, []byte("not a gitdir reference\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		parent := parseWorktreeGitFile(gitFile)
+		if parent != "" {
+			t.Errorf("parseWorktreeGitFile() = %q, want empty string", parent)
+		}
+	})
+
+	t.Run("nonexistent file", func(t *testing.T) {
+		parent := parseWorktreeGitFile(filepath.Join(tmpDir, "nonexistent"))
+		if parent != "" {
+			t.Errorf("parseWorktreeGitFile() = %q, want empty string", parent)
+		}
+	})
+}

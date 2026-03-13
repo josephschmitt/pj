@@ -47,13 +47,15 @@ type CLI struct {
 	MaxDepth   int      `short:"d" help:"Maximum search depth"`
 	NoIgnore   bool     `help:"Don't respect .gitignore and .ignore files"`
 	NoNested   bool     `help:"Don't search for projects inside other projects"`
+	Worktrees   bool     `help:"Discover git worktrees from parent repos, even outside search paths"`
+	NoWorktrees bool     `help:"Exclude git worktrees from results" name:"no-worktrees"`
 	Icons      bool     `help:"Show marker-based icons"`
 	Strip      bool     `help:"Strip icons from output"`
 	IconMap    []string `help:"Override icon mapping (MARKER:ICON)"`
 	Ansi       bool     `short:"a" help:"Colorize icons with ANSI codes"`
 	ColorMap   []string `help:"Override icon color (MARKER:COLOR)"`
 	Labels     LabelsFlag `short:"l" help:"Show marker label in output (label or display)"`
-	Format     string   `short:"f" help:"Custom output format (%p=path, %P=full-path, %n=name, %m=marker, %i=icon, %l=label, %L=display-label, %c=color)" default:""`
+	Format     string   `short:"f" help:"Custom output format (%p=path, %P=full-path, %n=name, %m=marker, %i=icon, %l=label, %L=display-label, %c=color, %w=worktree-parent)" default:""`
 	Shorten     bool     `short:"s" help:"Shorten home directory to ~ in output paths"`
 	NoCache    bool     `help:"Skip cache, force fresh search"`
 	ClearCache bool     `help:"Clear cache and exit"`
@@ -113,7 +115,7 @@ func formatOutput(format string, values map[string]string) string {
 	const sentinel = "\x00PCT\x00"
 	result := strings.ReplaceAll(format, "%%", sentinel)
 	// Replace %P before %p to avoid %P being partially matched as %p + "P"
-	for _, placeholder := range []string{"%P", "%p", "%n", "%m", "%i", "%L", "%l", "%c"} {
+	for _, placeholder := range []string{"%P", "%p", "%n", "%m", "%i", "%L", "%l", "%c", "%w"} {
 		if val, ok := values[placeholder]; ok {
 			result = strings.ReplaceAll(result, placeholder, val)
 		}
@@ -181,6 +183,11 @@ func main() {
 
 	if err := cfg.MergeFlags(&cli); err != nil {
 		fmt.Fprintf(os.Stderr, "Error merging config: %v\n", err)
+		os.Exit(1)
+	}
+
+	if cli.Worktrees && cli.NoWorktrees {
+		fmt.Fprintf(os.Stderr, "Error: --worktrees and --no-worktrees are mutually exclusive\n")
 		os.Exit(1)
 	}
 
@@ -279,6 +286,8 @@ func main() {
 			Icon                string `json:"icon,omitempty"`
 			AnsiIcon            string `json:"ansiIcon,omitempty"`
 			Color               string `json:"color,omitempty"`
+			IsWorktree          bool   `json:"isWorktree,omitempty"`
+			WorktreeParent      string `json:"worktreeParent,omitempty"`
 		}
 		type outputJSON struct {
 			Projects []projectJSON `json:"projects"`
@@ -300,16 +309,22 @@ func main() {
 			if cli.Shorten {
 				displayPath = shortenHome(p.Path, homeDir)
 			}
+			displayLabel := iconMapper.GetDisplayLabel(p.Marker)
+			if p.IsWorktree && displayLabel != "" {
+				displayLabel += " (worktree)"
+			}
 			jsonProjects[i] = projectJSON{
 				Path:               p.Path,
 				DisplayPath:        displayPath,
 				Name:               filepath.Base(p.Path),
 				Marker:             p.Marker,
 				MarkerLabel:        iconMapper.GetLabel(p.Marker),
-				MarkerDisplayLabel: iconMapper.GetDisplayLabel(p.Marker),
+				MarkerDisplayLabel: displayLabel,
 				Icon:               icon,
 				AnsiIcon:           ansiIcon,
 				Color:              color,
+				IsWorktree:         p.IsWorktree,
+				WorktreeParent:     p.WorktreeParent,
 			}
 		}
 
@@ -329,6 +344,10 @@ func main() {
 			if cli.Shorten {
 				displayPath = shortenHome(p.Path, homeDir)
 			}
+			displayLabel := iconMapper.GetDisplayLabel(p.Marker)
+			if p.IsWorktree && displayLabel != "" {
+				displayLabel += " (worktree)"
+			}
 			values := map[string]string{
 				"%p": displayPath,
 				"%P": p.Path,
@@ -336,8 +355,9 @@ func main() {
 				"%m": p.Marker,
 				"%i": icon,
 				"%l": icons.FormatLabel(iconMapper.GetLabel(p.Marker), cli.Ansi),
-				"%L": icons.FormatLabel(iconMapper.GetDisplayLabel(p.Marker), cli.Ansi),
+				"%L": icons.FormatLabel(displayLabel, cli.Ansi),
 				"%c": iconMapper.GetColor(p.Marker),
+				"%w": p.WorktreeParent,
 			}
 			fmt.Println(formatOutput(cli.Format, values))
 		}
@@ -354,6 +374,9 @@ func main() {
 					label = iconMapper.GetLabel(p.Marker)
 				case "display":
 					label = iconMapper.GetDisplayLabel(p.Marker)
+				}
+				if p.IsWorktree && label != "" {
+					label += " (worktree)"
 				}
 				if label != "" {
 					output = fmt.Sprintf("%s %s", icons.FormatLabel(label, cli.Ansi), output)

@@ -133,6 +133,62 @@ func TestComputeConfigHash(t *testing.T) {
 		}
 	})
 
+	t.Run("different Worktrees produces different hash", func(t *testing.T) {
+		cfg1 := &config.Config{
+			SearchPaths: []string{"/path1"},
+			Markers:     []string{".git"},
+			Excludes:    []string{},
+			MaxDepth:    3,
+			Worktrees:   false,
+		}
+
+		cfg2 := &config.Config{
+			SearchPaths: []string{"/path1"},
+			Markers:     []string{".git"},
+			Excludes:    []string{},
+			MaxDepth:    3,
+			Worktrees:   true,
+		}
+
+		m1 := &Manager{config: cfg1}
+		m2 := &Manager{config: cfg2}
+
+		hash1 := m1.computeConfigHash()
+		hash2 := m2.computeConfigHash()
+
+		if hash1 == hash2 {
+			t.Error("Different Worktrees values should produce different hashes")
+		}
+	})
+
+	t.Run("different NoWorktrees produces different hash", func(t *testing.T) {
+		cfg1 := &config.Config{
+			SearchPaths: []string{"/path1"},
+			Markers:     []string{".git"},
+			Excludes:    []string{},
+			MaxDepth:    3,
+			NoWorktrees: false,
+		}
+
+		cfg2 := &config.Config{
+			SearchPaths: []string{"/path1"},
+			Markers:     []string{".git"},
+			Excludes:    []string{},
+			MaxDepth:    3,
+			NoWorktrees: true,
+		}
+
+		m1 := &Manager{config: cfg1}
+		m2 := &Manager{config: cfg2}
+
+		hash1 := m1.computeConfigHash()
+		hash2 := m2.computeConfigHash()
+
+		if hash1 == hash2 {
+			t.Error("Different NoWorktrees values should produce different hashes")
+		}
+	})
+
 	t.Run("different Nested produces different hash", func(t *testing.T) {
 		cfg1 := &config.Config{
 			SearchPaths: []string{"/path1"},

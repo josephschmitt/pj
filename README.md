@@ -17,6 +17,7 @@
 - **Icon Support**: Display pretty icons for different project types (Nerd Fonts required)
 - **Label Support**: Show marker labels like `go` or `Go` alongside project paths
 - **ANSI Color Support**: Colorize icons with ANSI codes for terminal tools like `fzf` and `television`
+- **Git Worktree Support**: Detects git worktrees automatically, with optional discovery of worktrees outside search paths
 - **Custom Output Format**: Use `--format` with `%`-based placeholders for full control over output
 - **Unix Pipeline Support**: Pipe paths in and results out - works seamlessly in command chains
 - **Configurable**: YAML configuration file with sensible defaults
@@ -214,6 +215,8 @@ pj --version
 | `--format FORMAT` | `-f` | Custom output format (see [Format Placeholders](#format-placeholders)) |
 | `--sort VALUE` | | Sort order: `alpha`, `priority`, `label` (default: `priority`) |
 | `--sort-direction VALUE` | | Sort direction: `asc`, `desc` (default: `desc`) |
+| `--worktrees` | | Discover git worktrees from parent repos, even outside search paths |
+| `--no-worktrees` | | Exclude git worktrees from results |
 | `--no-cache` | | Skip cache, force fresh search |
 | `--clear-cache` | | Clear cache and exit |
 | `--verbose` | `-v` | Enable debug output |
@@ -270,6 +273,7 @@ The `--format` / `-f` flag gives you full control over the output format using `
 | `%l` | Label (e.g., `go`, `nodejs`) |
 | `%L` | Display label (e.g., `Go`, `NodeJS`) |
 | `%c` | Color name (e.g., `cyan`, `blue`) |
+| `%w` | Worktree parent path (empty if not a worktree) |
 | `%%` | Literal `%` |
 
 ```bash
@@ -487,6 +491,37 @@ markers:
 When a glob pattern matches, the actual matched filename is used as the marker (e.g., `MyApp.csproj` instead of `*.csproj`). If multiple files match the same pattern, the first alphabetically is used.
 
 Exact markers (like `.git`, `go.mod`) are checked first using fast `os.Stat` calls. Pattern markers are checked by reading directory contents, so they have slightly more overhead but are still efficient.
+
+### Git Worktree Support
+
+`pj` automatically detects [git worktrees](https://git-scm.com/docs/git-worktree) found during its normal directory walk. Worktrees are tagged with metadata (`isWorktree`, `worktreeParent`) and display a `(worktree)` suffix when using `--labels display`.
+
+```bash
+# Default: worktrees in search paths are detected automatically
+pj --labels display
+# Go (worktree) ~/development/my-project__worktrees/feature-branch
+
+# Actively discover worktrees even outside search paths
+pj --worktrees
+
+# Exclude all worktrees from results
+pj --no-worktrees
+
+# Show worktree parent in custom format
+pj --format '%p (parent: %w)'
+```
+
+The `--worktrees` flag reads each parent repo's `.git/worktrees/` directory to find linked worktrees, even if they live outside your configured search paths. The `--no-worktrees` flag filters out any worktree from results entirely. These flags are mutually exclusive.
+
+In JSON output (`--json`), worktree projects include `isWorktree` and `worktreeParent` fields.
+
+```yaml
+# Enable worktree discovery in config
+worktrees: true
+
+# Or disable worktrees entirely
+no_worktrees: true
+```
 
 ### Config Priority
 

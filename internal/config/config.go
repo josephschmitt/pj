@@ -79,6 +79,8 @@ type Config struct {
 	CacheTTL    int               `yaml:"cache_ttl"` // seconds
 	NoIgnore    bool              `yaml:"no_ignore"` // Don't respect .gitignore and .ignore files
 	Nested      bool              `yaml:"nested"`    // Continue discovery inside projects
+	Worktrees   bool              `yaml:"worktrees"`    // Actively discover worktrees from parent repos
+	NoWorktrees bool              `yaml:"no_worktrees"` // Filter out worktrees even if found during walk
 	// Deprecated: Use the new markers format with icon field instead.
 	// This field is kept for backward compatibility.
 	Icons map[string]string `yaml:"icons,omitempty"`
@@ -503,6 +505,18 @@ func (c *Config) MergeFlags(cli interface{}) error {
 	if noNestedField := v.FieldByName("NoNested"); noNestedField.IsValid() && noNestedField.Kind() == reflect.Bool {
 		if noNestedField.Bool() {
 			c.Nested = false
+		}
+	}
+
+	if worktreesField := v.FieldByName("Worktrees"); worktreesField.IsValid() && worktreesField.Kind() == reflect.Bool {
+		if worktreesField.Bool() {
+			c.Worktrees = true
+		}
+	}
+
+	if noWorktreesField := v.FieldByName("NoWorktrees"); noWorktreesField.IsValid() && noWorktreesField.Kind() == reflect.Bool {
+		if noWorktreesField.Bool() {
+			c.NoWorktrees = true
 		}
 	}
 

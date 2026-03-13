@@ -66,6 +66,8 @@ devbox run -- make clean
 
 **Early Termination**: When a project marker is found, that directory subtree is skipped (returns `fs.SkipDir`). This prevents redundant scanning and respects that a parent project marker takes precedence over child markers.
 
+**Worktree Detection**: Git worktrees are detected via two paths: Path A detects `.git` files (vs directories) during the normal walk and parses the `gitdir` reference to identify the parent repo. Path B (enabled with `--worktrees`) reads `.git/worktrees/` entries from parent repos to discover linked worktrees outside search paths. `--no-worktrees` filters worktrees from results. Worktree metadata (`IsWorktree`, `WorktreeParent`) is exposed in JSON output, format strings (`%w`), and display labels.
+
 ## Configuration System
 
 The config loading order is:
