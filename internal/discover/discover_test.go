@@ -1462,14 +1462,15 @@ func TestWorktreeDetectionPathA(t *testing.T) {
 	}
 
 	for _, p := range projects {
-		if p.Path == wtPaths[0] {
+		switch p.Path {
+		case wtPaths[0]:
 			if !p.IsWorktree {
 				t.Error("Worktree project should have IsWorktree=true")
 			}
 			if p.WorktreeParent != parentDir {
 				t.Errorf("WorktreeParent = %q, want %q", p.WorktreeParent, parentDir)
 			}
-		} else if p.Path == parentDir {
+		case parentDir:
 			if p.IsWorktree {
 				t.Error("Parent repo should have IsWorktree=false")
 			}

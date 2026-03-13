@@ -271,7 +271,7 @@ func parseWorktreeGitFile(gitFilePath string) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only file
 
 	scanner := bufio.NewScanner(f)
 	if !scanner.Scan() {
