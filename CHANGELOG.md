@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/josephschmitt/pj/compare/v1.13.0...v1.14.0) (2026-03-13)
+
+
+### Features
+
+* add git worktree discovery support ([#42](https://github.com/josephschmitt/pj/issues/42)) ([1642b5b](https://github.com/josephschmitt/pj/commit/1642b5bf0cf90cc28b150c17638aa73cd25e875e))
+
 ## [1.13.0](https://github.com/josephschmitt/pj/compare/v1.12.0...v1.13.0) (2026-02-13)
 
 
